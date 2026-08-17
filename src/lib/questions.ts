@@ -15,6 +15,17 @@ export const QUESTION_TYPES = [
 
 export type QuestionType = (typeof QUESTION_TYPES)[number];
 
+// Normalizes a placeholder key to a stable slug (letters/digits/underscore),
+// e.g. "Lunch Photo 🍱" -> "lunch_photo". Used for {{q.<key>}} placeholders.
+export function toKey(raw: string): string {
+  return raw
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "")
+    .slice(0, 40);
+}
+
 export interface QuestionLike {
   type: QuestionType;
   options?: unknown;

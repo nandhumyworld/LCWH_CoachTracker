@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { auth } from "@/auth";
+import { prisma } from "@/lib/db";
 import { hasRole, homePathForRole, type SessionUser } from "@/lib/auth-helpers";
 import type { AppRole } from "@/types/next-auth";
 
@@ -27,4 +28,21 @@ export async function requireRole(...allowed: AppRole[]): Promise<SessionUser> {
   if (!user) redirect("/login");
   if (!hasRole(user.role, allowed)) redirect(homePathForRole(user.role));
   return user;
+}
+
+export interface CoachContext {
+  user: SessionUser;
+  coachId: string;
+}
+
+// Enforces the coach role AND resolves the caller's own coachId, so every
+// coach action is automatically scoped to their own data.
+export async function requireCoach(): Promise<CoachContext> {
+  const user = await requireRole("coach");
+  const coach = await prisma.coach.findUnique({
+    where: { userId: user.id },
+    select: { id: true },
+  });
+  if (!coach) redirect("/login");
+  return { user, coachId: coach.id };
 }

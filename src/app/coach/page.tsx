@@ -1,19 +1,39 @@
-import { requireRole } from "@/lib/auth-guards";
-import { SignOutButton } from "@/components/SignOutButton";
+import Link from "next/link";
+import { requireCoach } from "@/lib/auth-guards";
+import { prisma } from "@/lib/db";
 
-// Placeholder coach home — replaced by the dashboard in Phase 8.
+// Coach home. The full all-student dashboard arrives in Phase 8; for now this
+// surfaces quick counts and links into the program builder.
 export default async function CoachHome() {
-  const user = await requireRole("coach");
+  const { user, coachId } = await requireCoach();
+  const [questionCount, studentCount] = await Promise.all([
+    prisma.question.count({ where: { coachId } }),
+    prisma.student.count({ where: { coachId } }),
+  ]);
+
   return (
-    <main className="mx-auto max-w-3xl p-8">
-      <div className="mb-6 flex items-center justify-between">
-        <h1 className="text-2xl font-bold">Coach</h1>
-        <SignOutButton />
+    <main className="space-y-6">
+      <div>
+        <h1 className="text-2xl font-bold">Welcome, {user.name}</h1>
+        <p className="text-muted-foreground">
+          {questionCount} question{questionCount === 1 ? "" : "s"} · {studentCount}{" "}
+          student{studentCount === 1 ? "" : "s"}
+        </p>
       </div>
-      <p className="text-muted-foreground">
-        Signed in as {user.name} ({user.email}). Program builder, students, and
-        dashboard arrive in later phases.
-      </p>
+      <div className="flex gap-3">
+        <Link
+          href="/coach/questions"
+          className="rounded-md bg-primary px-4 py-2 text-sm text-primary-foreground"
+        >
+          Build daily questions
+        </Link>
+        <Link
+          href="/coach/settings"
+          className="rounded-md border px-4 py-2 text-sm"
+        >
+          Form settings
+        </Link>
+      </div>
     </main>
   );
 }
