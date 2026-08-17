@@ -46,3 +46,27 @@ export async function requireCoach(): Promise<CoachContext> {
   if (!coach) redirect("/login");
   return { user, coachId: coach.id };
 }
+
+export interface StudentContext {
+  user: SessionUser;
+  studentId: string;
+  coachId: string;
+  intakeComplete: boolean;
+}
+
+// Enforces the student role AND resolves the caller's own studentId + intake
+// state, so student pages/actions are scoped to their own data.
+export async function requireStudent(): Promise<StudentContext> {
+  const user = await requireRole("student");
+  const student = await prisma.student.findUnique({
+    where: { userId: user.id },
+    select: { id: true, coachId: true, intakeAt: true },
+  });
+  if (!student) redirect("/login");
+  return {
+    user,
+    studentId: student.id,
+    coachId: student.coachId,
+    intakeComplete: student.intakeAt !== null,
+  };
+}
