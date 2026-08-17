@@ -1,0 +1,208 @@
+FLARY — PROJECT REQUIREMENTS (RAW NOTES)
+=========================================
+Purpose: Rough, running notes captured from voice as Nandhu describes the
+project. NOT the final spec. We will clean these up later and turn them into
+the formal requirements.md using the requirements skill.
+
+Date started: 2026-08-17
+
+=========================================
+CORE IDEA
+=========================================
+- A SaaS-style application that can be resold / set up for multiple digital
+  coaches who run digital coaching systems.
+- Problem being solved: coaches can't easily TRACK their students today.
+- Coach configures what each student should do/answer; system tracks it.
+- Can run as a time-boxed program (e.g. 90 days / 100 days "hackathon" style)
+  OR as a continuous / lifelong program.
+
+=========================================
+GOALS & DAILY QUESTIONS FLOW
+=========================================
+- Student sets / has a GOAL.
+- From that goal, the COACH sets the daily questions that the student must
+  answer every day.
+- Student answers the daily questions.
+- Coach writes a PROMPT. The student's answers get injected into that prompt.
+- That prompt runs (AI) and produces a daily REPORT for each student.
+
+=========================================
+EXAMPLE USE CASE — WEIGHT LOSS COACH
+=========================================
+- Registration/onboarding: a section for the student to register with enough
+  info about current status: current weight, height, target weight to lose.
+- From that, system calculates a few things and shows a PERSONAL INFO panel at
+  the TOP of the student's dashboard — generated using a prompt the coach
+  provides.
+- Daily questions examples: sleep pattern, water intake, supplement intake,
+  what they ate for breakfast.
+- Some questions must allow an IMAGE attachment (e.g. photo of the meal/plate)
+  plus a text note describing what they ate.
+- Coach's prompt can use that photo to estimate calories on the plate and give
+  a report: calories taken, how it aligns to the goal, plus the daily weight
+  they must log.
+
+=========================================
+QUESTION TYPES (like Google Forms)
+=========================================
+- Coach builds questions and picks the answer TYPE per question:
+    * Yes / No
+    * Multiple choice
+    * Dropdown / list select
+    * (implied) short text / note
+    * Image attachment (+ optional note)
+- Coach chooses the answer type per question, Google-Forms style.
+
+=========================================
+POINTS / GAMIFICATION
+=========================================
+- Each question can be assigned POINTS.
+- Answering a question adds points.
+- Missing a question loses the point.
+- Used for awards / gamification / leaderboard-style motivation.
+
+=========================================
+DAILY LOCK / AUTO-SUBMIT RULES
+=========================================
+- Students CANNOT edit previous days' answers.
+- At 11:59 PM the day closes: answers auto-submit and the report is generated.
+- Student can view today's report on their dashboard, or go to a specific past
+  day and see the report generated for that day.
+
+=========================================
+COACH SYSTEM (ADMIN SIDE)
+=========================================
+- Coach logs in and sets all of this up.
+- Coach sees a dashboard across ALL their students — questions, statistics,
+  many stats.
+- Settings: coach controls WHAT is shared on the student profile, and what is
+  shared on the daily questions.
+- Coach can assign points per question.
+- Coach can push notifications / insights — a daily note, daily action points,
+  etc. — shown on the student dashboard for them to view.
+
+=========================================
+SCHEDULING OF UPDATES / MESSAGES
+=========================================
+- Coach can SCHEDULE updates/messages by date.
+- Two kinds of scheduling:
+    1. RELATIVE to join date: e.g. when a student completes 30 days from the
+       day they joined, auto-send a message to their dashboard.
+    2. ABSOLUTE / specific calendar date: e.g. a birthday or a date-specific
+       message posted to all students' dashboards on that day.
+- These updates appear at the TOP of the dashboard per day, from the day they
+  join or on the specific day.
+
+=========================================
+MULTI-TENANCY / BUSINESS MODEL
+=========================================
+- Many coaches can register and create an account.
+- Coaches pay a SUBSCRIPTION (monthly or yearly) to use the platform.
+- Each coach adds their own students under them.
+- Coaches can then track all student updates easily.
+
+=========================================
+PHASING / BUILD APPROACH (Nandhu's words)
+=========================================
+- Start SIMPLE: onboard ONE coach and test the whole flow first.
+- Later: open up to MULTIPLE coaches via the subscription model.
+- Sequence: (1) brainstorm requirements fully, (2) decide the tech stack,
+  (3) then go feature by feature on the critical things needed to make it work.
+
+=========================================
+DECISIONS LOCKED (during brainstorm 2026-08-17)
+=========================================
+[D1] MVP scope = CORE LOOP, single hardcoded coach. Included: student
+     onboarding+intake, question builder (all answer types incl. image),
+     daily answering, daily lock at 11:59 PM, AI daily report. EXCLUDED for
+     now (later specs): billing, multi-coach signup, scheduling/broadcast,
+     gamification/leaderboard.
+[D2] Daily questions = ONE FIXED SET the student answers every day.
+[D3] Student access = coach invites (name/email) -> student gets invite link,
+     sets own password, completes intake form.
+
+[D4] Daily report generation trigger = ON SUBMIT (immediate report + locks
+     the day). Fallback: at 11:59 PM the day auto-submits and generates the
+     report if the student hasn't. One report per student per day.
+[D5] Report context = today's answers + today's photos (vision) + student
+     intake profile. Report covers TODAY (calorie estimate from meal photo,
+     alignment to goal, weight logged). Recent-history/trend deferred.
+[D6] The AI PROMPT is EDITABLE from a screen (admin UI) at any time. It uses
+     INJECTION PLACEHOLDERS that pull each question's answer into the prompt.
+     Not hardcoded. Can be modified anytime.
+[D7] THREE ROLES: ADMIN, COACH, STUDENT (not just coach+student).
+     - Admin = platform owner (Nandhu) superuser.
+     - Coach = builds questions/program, runs students, sees dashboards.
+     - Student = answers daily, sees reports.
+     OPEN: who owns/edits the report prompt -> admin only, or coach too?
+
+[D8] PROMPT OWNERSHIP = ADMIN owns/edits the report prompt template; coaches
+     use it but don't edit it (MVP). Admin role IS built now but minimal
+     (manages the one coach, edits prompts, sees system health).
+[D9] TIMEZONE = PER-STUDENT. Each student enters their timezone at
+     registration. The day boundary and 11:59 PM auto-submit run on that
+     student's LOCAL time.
+[D10] PROFILE PANEL = computed ONCE at onboarding from height/weight/target
+     weight -> BMI, BMR, and other derivable parameters; shown at top of
+     student dashboard. Coach CAN regenerate but typically it's one-time.
+
+[D11] STACK: Next.js full-stack app, deployed as Docker container via COOLIFY
+      on existing Hostinger VPS. Uses EXISTING self-hosted POSTGRES (Prisma
+      ORM). Auth.js for auth with 3 roles. NO Supabase.
+[D12] AI via OPENROUTER (swap models anytime). The model id is an ADMIN
+      SETTING editable from a screen (no redeploy). Vision-capable model used
+      for meal-photo calorie estimate.
+[D13] IMAGE STORAGE: files stored OUTSIDE Postgres (Postgres = pointer + meta
+      only). MVP = LOCAL DISK VOLUME on the VPS (cheapest/fastest), accessed
+      behind a storage interface so we can swap to MinIO/S3 later with no app
+      changes. Rationale: Postgres blob storage bloats DB/backups + hurts perf.
+[D14] PHOTO RETENTION: a configurable cleanup job auto-deletes photos older
+      than N days and nulls the DB pointer to free space (user requirement).
+
+=========================================
+REAL EXAMPLE — "DAILY WELLNESS & ACCOUNTABILITY TRACKER" (from coach)
+=========================================
+Reveals the actual answer TYPES the question builder must support:
+  - Short answer (text)
+  - Short answer -> Number (with validation, e.g. > 0)
+  - Date
+  - Paragraph (long text)
+  - Multiple choice (single select, e.g. Yes/No, can have emoji labels)
+  - Checkboxes (multi-select, e.g. daily commitment list)
+  - Linear scale (e.g. 1-5, with min/max labels)
+  - File upload -> Images only, max 1 file (weight photo, lunch plate photo)
+Structure features seen:
+  - Questions grouped into SECTIONS with titles/emojis (Personal, Morning
+    Nutrition, Lunch, Dinner, Sleep & Movement, Hydration, Mindset, Coaching,
+    Reflection, Daily Commitment).
+  - Per-question REQUIRED flag (yes/no).
+  - Per-question instruction/description/example helper text.
+  - Form-level DESCRIPTION (welcome text).
+  - Form-level SUBMISSION / thank-you MESSAGE (custom, signed by coach).
+  - Coach persona example signed "Flary Elsy Selva" -> NOTE: is "Flary" the
+    APP name or the COACH's brand? CLARIFY.
+Example daily questions (short version): today's weight (kg, mandatory) +
+weight photo; Afresh morning yes/no; morning shake yes/no; lunch plate photo
+or typed description; Afresh evening yes/no; dinner shake yes/no; good sleep
+yes/no; exercise done yes/no + type; enough water yes/no + litres; positive
+mindset yes/no + 1-5 rating; attended class yes/no; one thing proud of;
+need coach support yes/no + details; daily commitment checkboxes.
+
+=========================================
+OPEN QUESTIONS / TO CLARIFY LATER
+=========================================
+[ ] Product name confirmed = "Flary"?
+[ ] Which AI model/provider generates the reports (Claude)?
+[ ] Timezone handling for the 11:59 PM cutoff (per-student? per-coach?).
+[ ] Where images are stored; privacy of student photos/health data.
+[ ] Payment provider for subscriptions (Stripe / Razorpay / etc.).
+[ ] Do students log in themselves, or coach creates accounts for them?
+[ ] Leaderboard visible to students or only to coach?
+[ ] Can a coach clone/template a program to reuse for the next cohort?
+
+=========================================
+PARKING LOT (ideas mentioned, decide later)
+=========================================
+- Leaderboard / awards from the point system.
+- "Hackathon" style fixed-length challenges (90/100 days).
+- Report history browsing by day.
