@@ -159,6 +159,17 @@ DECISIONS LOCKED (during brainstorm 2026-08-17)
 [D14] PHOTO RETENTION: a configurable cleanup job auto-deletes photos older
       than N days and nulls the DB pointer to free space (user requirement).
 
+[D15] DAILY LOGIN-GATE MESSAGE (attendance). Coach composes a daily message
+      = text + optional photo + a custom ACKNOWLEDGEMENT BUTTON LABEL (e.g.
+      "I am born for more" / "Tap heart"). Coach can PRE-SCHEDULE A WEEK ahead,
+      one message per calendar date, shown to all that coach's students.
+      On first app entry each day it appears as a MANDATORY full-screen popup
+      (first thing seen); student cannot enter until they TAP the button =
+      ACKNOWLEDGE ONLY (no reply required). That tap logs ATTENDANCE
+      (student+date+timestamp). If no message scheduled that day -> no gate.
+      Coach dashboard shows daily attendance. Distinct from + simpler than the
+      deferred day-30/birthday BROADCASTS (still out of scope for MVP).
+
 =========================================
 REAL EXAMPLE — "DAILY WELLNESS & ACCOUNTABILITY TRACKER" (from coach)
 =========================================

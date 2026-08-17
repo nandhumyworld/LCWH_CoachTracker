@@ -31,7 +31,7 @@ Three roles, all built in this MVP (Admin kept minimal):
 | Role | Responsibilities |
 |------|------------------|
 | **Admin** (platform owner) | Manage the coach account. Create/edit the AI **report prompt template** (with answer-injection placeholders). Set the **AI model** (OpenRouter model id) and other system settings. View system/health + generation logs. |
-| **Coach** | Build the program: intake fields, the fixed daily question set (sections, question types, options, points, required flags, help text), form description, submission message. Invite students. View a dashboard across all their students. Regenerate a student's profile panel if needed. |
+| **Coach** | Build the program: intake fields, the fixed daily question set (sections, question types, options, points, required flags, help text), form description, submission message. Compose & pre-schedule the **daily login-gate message** (a week ahead). Invite students. View a dashboard across all their students, including daily attendance. Regenerate a student's profile panel if needed. |
 | **Student** | Accept invite, set password, complete intake (timezone, height, weight, target weight). Answer the daily form each day (including photo uploads). View today's and past reports. Cannot edit past days. |
 
 Auth: Auth.js (self-hosted), role stored on the user record. Route/API
@@ -55,6 +55,27 @@ authorization enforced by role.
 Exactly **one report per student per day**.
 
 ---
+
+## 3a. Daily Login-Gate Message (Attendance)
+
+A daily coach message that gates entry to the app and doubles as attendance.
+
+- The coach composes a **daily message**: text (e.g. a motivational statement)
+  plus an **optional photo**, and defines the **acknowledgement button label**
+  (e.g. "I am born for more", "Tap ❤️"). The coach can **pre-schedule a week**
+  in advance — one message per calendar date.
+- On the student's **first app entry each day**, the message for that calendar
+  date appears as a **mandatory full-screen popup/banner — the first thing they
+  see**. The student cannot access the rest of the app until they tap the
+  acknowledgement button.
+- Tapping the button = **acknowledge only** (no reply required). This records
+  **attendance** (student + date + timestamp) and unlocks the app for the day.
+- If **no message is scheduled** for a given date, there is no gate that day.
+- The coach's dashboard shows a **daily attendance view** (who acknowledged,
+  when) across all students.
+
+Note: this is intentionally distinct from — and simpler than — the deferred
+day-30-from-join and birthday-style broadcast messages (still out of scope).
 
 ## 4. Data Model (Postgres via Prisma)
 
@@ -80,6 +101,11 @@ Core entities (fields abbreviated):
   bytes, createdAt, expiresAt`. Pointer/metadata only; bytes live on disk.
 - **Report** — `id, dailyEntryId, body, modelId, promptTemplateId,
   tokensIn, tokensOut, costEstimate, status (pending|done|failed), createdAt`.
+- **DailyGateMessage** — `id, coachId, scheduledDate, bodyText, imageRef?,
+  ackButtonLabel`. Unique per (coachId, scheduledDate). Coach-scheduled up to a
+  week ahead; applies to all of the coach's students on that date.
+- **GateAcknowledgement** — `id, gateMessageId, studentId, acknowledgedAt`.
+  Unique per (gateMessageId, studentId). Presence = attendance for that date.
 
 ### Question types supported (from the coach's real example)
 - Short answer (text)
