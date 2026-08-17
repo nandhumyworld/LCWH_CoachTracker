@@ -170,6 +170,11 @@ DECISIONS LOCKED (during brainstorm 2026-08-17)
       Coach dashboard shows daily attendance. Distinct from + simpler than the
       deferred day-30/birthday BROADCASTS (still out of scope for MVP).
 
+[D16] BRANDING RESOLVED: "Flary" = the COACH (Flary Elsy Selva). USER-FACING
+      APP NAME = her community name "LifeChanging Wellness Hub" = "LCWH".
+      "Flary" stays only as internal repo/working name. Future multi-coach =
+      white-labeled per coach (each coach's community name as the app brand).
+
 =========================================
 REAL EXAMPLE — "DAILY WELLNESS & ACCOUNTABILITY TRACKER" (from coach)
 =========================================

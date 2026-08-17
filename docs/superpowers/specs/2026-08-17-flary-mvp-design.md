@@ -203,7 +203,12 @@ question set so the admin can insert them correctly.
 
 ## 10. Open Questions (non-blocking; can resolve during planning)
 
-- Is "Flary" the **app/platform** name or the **coach's brand**? (Coach example
-  signed "Flary Elsy Selva".) Affects branding, not architecture.
+- ~~Is "Flary" the app or the coach's brand?~~ **Resolved:** "Flary" (Flary
+  Elsy Selva) is the **coach**. The **user-facing app name is her community
+  name: "LifeChanging Wellness Hub" — short "LCWH".** Implication for later:
+  because the app is branded with the coach's community name, the future
+  multi-coach platform is effectively **white-labeled per coach** (each coach's
+  community branding). MVP is branded **LCWH**; "Flary" is only the internal
+  repo/working name.
 - OpenRouter default model + budget/cost guardrails per report.
 - Exact retention period default for photo cleanup.
