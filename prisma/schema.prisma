@@ -1,0 +1,311 @@
+// LCWH (Flary) — MVP data model.
+// Source of truth: docs/superpowers/specs/2026-08-17-flary-mvp-design.md §4.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ---------------------------------------------------------------------------
+// Enums
+// ---------------------------------------------------------------------------
+
+enum Role {
+  admin
+  coach
+  student
+}
+
+enum StudentStatus {
+  invited
+  active
+  paused
+}
+
+enum QuestionType {
+  short_text
+  number
+  date
+  paragraph
+  multiple_choice // single select
+  checkboxes // multi select
+  linear_scale
+  image
+}
+
+enum DailyEntryStatus {
+  open
+  submitted
+  auto_submitted
+  missed
+}
+
+enum ReportStatus {
+  pending
+  done
+  failed
+}
+
+// ---------------------------------------------------------------------------
+// Identity & roles
+// ---------------------------------------------------------------------------
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String?
+  role         Role
+  name         String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  coach   Coach?
+  student Student?
+
+  // Password-set / invite tokens.
+  inviteTokens InviteToken[]
+}
+
+// Single coach in the MVP, modeled as a table for later multi-coach support.
+model Coach {
+  id        String   @id @default(cuid())
+  userId    String   @unique
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  students        Student[]
+  questions       Question[]
+  programSettings ProgramSettings?
+  gateMessages    DailyGateMessage[]
+}
+
+model Student {
+  id             String        @id @default(cuid())
+  userId         String        @unique
+  user           User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  coachId        String
+  coach          Coach         @relation(fields: [coachId], references: [id], onDelete: Cascade)
+  timezone       String // IANA, e.g. "Asia/Kolkata"
+  joinedDate     DateTime      @default(now())
+  status         StudentStatus @default(invited)
+  // Intake
+  heightCm       Float?
+  currentWeightKg Float?
+  targetWeightKg Float?
+  intakeAt       DateTime?
+
+  profilePanel     ProfilePanel?
+  dailyEntries     DailyEntry[]
+  storedImages     StoredImage[]
+  acknowledgements GateAcknowledgement[]
+
+  @@index([coachId])
+}
+
+model InviteToken {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash String   @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+}
+
+// ---------------------------------------------------------------------------
+// Profile panel (computed at onboarding)
+// ---------------------------------------------------------------------------
+
+model ProfilePanel {
+  id          String   @id @default(cuid())
+  studentId   String   @unique
+  student     Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  bmi         Float?
+  bmr         Float?
+  weightToLoseKg Float?
+  computed    Json? // any other derivable parameters
+  narrative   String? // optional AI narrative
+  generatedAt DateTime @default(now())
+}
+
+// ---------------------------------------------------------------------------
+// Program (coach-built)
+// ---------------------------------------------------------------------------
+
+model Question {
+  id           String       @id @default(cuid())
+  coachId      String
+  coach        Coach        @relation(fields: [coachId], references: [id], onDelete: Cascade)
+  // Stable key for prompt placeholders, e.g. "weight", "lunch_photo".
+  key          String
+  sectionTitle String
+  orderIndex   Int
+  type         QuestionType
+  prompt       String
+  options      Json? // choices / scale config
+  points       Int          @default(0)
+  required     Boolean      @default(false)
+  allowsImage  Boolean      @default(false)
+  helpText     String?
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+
+  answers Answer[]
+
+  @@unique([coachId, key])
+  @@index([coachId, orderIndex])
+}
+
+model ProgramSettings {
+  id                String   @id @default(cuid())
+  coachId           String   @unique
+  coach             Coach    @relation(fields: [coachId], references: [id], onDelete: Cascade)
+  formDescription   String?
+  submissionMessage String?
+  promptTemplateId  String?
+  promptTemplate    PromptTemplate? @relation(fields: [promptTemplateId], references: [id])
+}
+
+// ---------------------------------------------------------------------------
+// AI prompt (admin-owned)
+// ---------------------------------------------------------------------------
+
+model PromptTemplate {
+  id        String   @id @default(cuid())
+  name      String
+  body      String // with {{placeholders}}
+  modelId   String // OpenRouter model id
+  version   Int      @default(1)
+  updatedBy String?
+  updatedAt DateTime @updatedAt
+  createdAt DateTime @default(now())
+
+  programSettings ProgramSettings[]
+  reports         Report[]
+}
+
+// ---------------------------------------------------------------------------
+// Daily loop
+// ---------------------------------------------------------------------------
+
+model DailyEntry {
+  id          String           @id @default(cuid())
+  studentId   String
+  student     Student          @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  localDate   DateTime         @db.Date // the student's local calendar date
+  status      DailyEntryStatus @default(open)
+  submittedAt DateTime?
+  createdAt   DateTime         @default(now())
+
+  answers Answer[]
+  report  Report?
+  images  StoredImage[]
+
+  @@unique([studentId, localDate])
+  @@index([status])
+}
+
+model Answer {
+  id           String     @id @default(cuid())
+  dailyEntryId String
+  dailyEntry   DailyEntry @relation(fields: [dailyEntryId], references: [id], onDelete: Cascade)
+  questionId   String
+  question     Question   @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  value        Json? // text/number/date/choice(s)/scale
+  imageRefId   String?
+  imageRef     StoredImage? @relation("AnswerImage", fields: [imageRefId], references: [id])
+  note         String?
+
+  @@unique([dailyEntryId, questionId])
+}
+
+// ---------------------------------------------------------------------------
+// Image storage (pointer/metadata only; bytes live on disk)
+// ---------------------------------------------------------------------------
+
+model StoredImage {
+  id             String   @id @default(cuid())
+  storageKey     String   @unique // opaque key resolved by StorageService
+  ownerStudentId String
+  ownerStudent   Student  @relation(fields: [ownerStudentId], references: [id], onDelete: Cascade)
+  dailyEntryId   String?
+  dailyEntry     DailyEntry? @relation(fields: [dailyEntryId], references: [id], onDelete: SetNull)
+  mimeType       String
+  bytes          Int
+  createdAt      DateTime @default(now())
+  expiresAt      DateTime?
+  deletedAt      DateTime? // set by retention cleanup when bytes removed
+
+  answers Answer[] @relation("AnswerImage")
+
+  @@index([ownerStudentId])
+  @@index([expiresAt])
+}
+
+// ---------------------------------------------------------------------------
+// Reports
+// ---------------------------------------------------------------------------
+
+model Report {
+  id               String         @id @default(cuid())
+  dailyEntryId     String         @unique
+  dailyEntry       DailyEntry     @relation(fields: [dailyEntryId], references: [id], onDelete: Cascade)
+  body             String?
+  modelId          String?
+  promptTemplateId String?
+  promptTemplate   PromptTemplate? @relation(fields: [promptTemplateId], references: [id])
+  tokensIn         Int?
+  tokensOut        Int?
+  costEstimate     Float?
+  status           ReportStatus   @default(pending)
+  error            String?
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+}
+
+// ---------------------------------------------------------------------------
+// Daily login-gate message + attendance
+// ---------------------------------------------------------------------------
+
+model DailyGateMessage {
+  id             String   @id @default(cuid())
+  coachId        String
+  coach          Coach    @relation(fields: [coachId], references: [id], onDelete: Cascade)
+  scheduledDate  DateTime @db.Date
+  bodyText       String
+  imageRefId     String?
+  ackButtonLabel String   @default("I acknowledge")
+  createdAt      DateTime @default(now())
+
+  acknowledgements GateAcknowledgement[]
+
+  @@unique([coachId, scheduledDate])
+}
+
+model GateAcknowledgement {
+  id             String           @id @default(cuid())
+  gateMessageId  String
+  gateMessage    DailyGateMessage @relation(fields: [gateMessageId], references: [id], onDelete: Cascade)
+  studentId      String
+  student        Student          @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  acknowledgedAt DateTime         @default(now())
+
+  @@unique([gateMessageId, studentId])
+  @@index([studentId])
+}
+
+// ---------------------------------------------------------------------------
+// System settings (single-row key/value for admin-config like retention days)
+// ---------------------------------------------------------------------------
+
+model SystemSetting {
+  key       String   @id
+  value     String
+  updatedAt DateTime @updatedAt
+}

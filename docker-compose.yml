@@ -1,0 +1,55 @@
+# Local development stack: app + Postgres. Mirrors the production topology
+# (single app container + external Postgres) so behavior matches Coolify.
+#
+#   docker compose up --build
+#   → app on http://localhost:3000, Postgres on localhost:5432
+#
+# In production you do NOT use this file. Coolify builds the Dockerfile and you
+# point DATABASE_URL at the managed Postgres you create in Coolify.
+
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: lcwh
+      POSTGRES_PASSWORD: lcwh
+      POSTGRES_DB: lcwh
+    ports:
+      - "5432:5432"
+    volumes:
+      - lcwh_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U lcwh -d lcwh"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: "postgresql://lcwh:lcwh@db:5432/lcwh?schema=public"
+      AUTH_SECRET: "local-dev-secret-change-me"
+      AUTH_URL: "http://localhost:3000"
+      CRON_SECRET: "local-dev-cron-secret"
+      OPENROUTER_API_KEY: "${OPENROUTER_API_KEY:-}"
+      OPENROUTER_DEFAULT_MODEL: "openai/gpt-4o-mini"
+      STORAGE_DRIVER: "local"
+      STORAGE_LOCAL_DIR: "/data/uploads"
+      PHOTO_RETENTION_DAYS: "30"
+      NEXT_PUBLIC_APP_NAME: "LifeChanging Wellness Hub"
+      NEXT_PUBLIC_APP_SHORT_NAME: "LCWH"
+    ports:
+      - "3000:3000"
+    volumes:
+      - lcwh_uploads:/data
+
+volumes:
+  lcwh_pgdata:
+  lcwh_uploads:

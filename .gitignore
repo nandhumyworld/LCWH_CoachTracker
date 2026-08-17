@@ -2,4 +2,9 @@ node_modules/
 .next/
 .env
 .env.local
+.env*.local
 dist/
+next-env.d.ts
+/data/
+*.tsbuildinfo
+prisma/generated/
