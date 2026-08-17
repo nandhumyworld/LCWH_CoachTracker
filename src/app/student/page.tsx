@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import Link from "next/link";
 import { requireStudent } from "@/lib/auth-guards";
 import { prisma } from "@/lib/db";
 import { ProfilePanelCard } from "@/components/ProfilePanelCard";
@@ -37,9 +38,12 @@ export default async function StudentHome() {
         }}
       />
 
-      <p className="text-sm text-muted-foreground">
-        Your daily check-in will appear here (coming in the next phase).
-      </p>
+      <Link
+        href="/student/today"
+        className="inline-block rounded-md bg-primary px-4 py-2 text-sm text-primary-foreground"
+      >
+        Go to today&apos;s check-in
+      </Link>
     </main>
   );
 }
