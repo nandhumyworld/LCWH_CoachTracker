@@ -7,5 +7,8 @@ export default defineConfig({
   test: {
     environment: "node",
     include: ["src/**/*.test.ts", "src/**/__tests__/**/*.test.ts"],
+    // The forks pool intermittently throws EPERM on Windows during worker
+    // teardown; threads is stable here.
+    pool: "threads",
   },
 });
