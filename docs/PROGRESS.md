@@ -1,6 +1,6 @@
 # LCWH (Flary) — Build Progress
 
-**Last updated:** 2026-08-18 (end of Phase 6)
+**Last updated:** 2026-08-18 (end of Phase 7)
 **Active branch:** `feat/question-builder` (all phases stacked here; not yet merged to `main`)
 **Plan:** `docs/superpowers/plans/2026-08-17-lcwh-mvp.md`
 **Spec:** `docs/superpowers/specs/2026-08-17-flary-mvp-design.md`
@@ -16,7 +16,7 @@
 4. Sanity check: `npm test` (should pass 24), `npm run build` (green), `npm run dev` → http://localhost:3000.
 
 ### Verification commands
-- `npm test` — 41 unit tests (pure logic + mocked-IO report generation).
+- `npm test` — 46 unit tests (pure logic + mocked-IO report generation).
 - `npm run typecheck` — tsc, clean.
 - `npm run lint` — clean.
 - `npm run build` — Next standalone, green.
@@ -35,8 +35,8 @@
 | 4 | Daily check-in, image storage + auth serving, submit/lock, past days | ✅ done |
 | 5 | Per-timezone auto-submit engine + `/api/cron/auto-submit` (n8n) | ✅ done |
 | 6 | AI reports (OpenRouter): prompt filling, generateReport, admin prompt editor | ✅ done |
-| **7** | **Daily gate message + attendance** | ⏭️ **NEXT** |
-| 8 | Coach dashboard + attendance view | ⬜ todo |
+| 7 | Daily gate message + attendance | ✅ done |
+| **8** | **Coach dashboard + attendance view** | ⏭️ **NEXT** |
 | 9 | Admin settings + generation logs | ⬜ todo |
 | 10 | Photo retention cleanup + `/api/cron/photo-cleanup` (n8n) | ⬜ todo |
 | 11 | Deploy hardening on Coolify | ⬜ todo |
@@ -56,9 +56,19 @@ Delivered (branch `feat/question-builder`, commits 402343e → 2c32949):
 
 ---
 
-## Next up: Phase 7 (Daily gate message + attendance)
+## Phase 7 — DONE (Daily gate message + attendance)
 
-See plan § "Phase 7". Order: 7.1 gate scheduling + resolution (`src/lib/gate.ts`, TDD — pure logic in a `*-util`), then 7.2 coach composer + student full-screen gate popup + `acknowledgeGate` (attendance).
+Delivered (commits 117a471 → ce96e8d):
+- **7.1** `src/lib/gate-util.ts` (pure `isSchedulableDate`/`daysBetweenLocalDates`, today..+7, unit-tested) + `src/lib/gate.ts` IO (`scheduleGateMessage` one-per-`[coachId,scheduledDate]` upsert, `gateForStudentToday` resolves by the student's local date + acknowledged flag, `acknowledgeGate` idempotent). Actions: coach `scheduleGateAction`, student `acknowledgeGateAction` (re-checks the gate is today's before writing).
+- **7.2** Coach `/coach/gate` composer (date + message + ack label, ≤1wk ahead, lists upcoming w/ ack counts). Student `GateGuard` full-screen blocking popup wired into `src/app/student/layout.tsx` (shows only after intake, when an unacknowledged gate exists); ack records attendance + `router.refresh()` to dismiss. "Daily message" added to coach nav.
+
+**Note:** coach schedule-window "today" uses UTC (no per-coach timezone in schema) — a convenience bound, not the hard student day-lock. Gate IO verified via typecheck+build (dominant convention: prisma fns aren't vitest-tested).
+
+---
+
+## Next up: Phase 8 (Coach dashboard + attendance view)
+
+See plan § "Phase 8". 8.1 all-student dashboard (`/coach` today-status list + `/coach/students/[id]` daily history + regenerate-profile) and 8.2 attendance view (`/coach/attendance`, per-date acks with date picker, FR-25). `src/lib/dashboard.ts` for any pure aggregation helpers.
 
 ---
 
