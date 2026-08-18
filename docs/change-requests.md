@@ -32,7 +32,6 @@ _Kept in sync as entries are added/closed. Newest first._
 | CR-007 | 2026-08-18 | High | New | AI prompt | Image-aware + multi-step ("tree of thoughts") prompt authoring: reference answer-key images in the prompt, label multiple images, chain steps (e.g. calories from photo → compute) | Open |
 | CR-006 | 2026-08-18 | Medium | New | Daily form | Allow attaching a photo to ANY question when enabled (allowsImage), separate from the answer value | Open |
 | CR-005 | 2026-08-18 | Medium | New | Daily form | Note/comment field on ALL question types, not just image | Open |
-| CR-004 | 2026-08-18 | Medium | New | Question builder | Checkbox option to allow choosing only one (single-select / yes-no) | Open |
 | CR-003 | 2026-08-18 | Medium | New | Student home | Let student browse past reports by a date they pick | Open |
 | CR-002 | 2026-08-18 | High | New | Student home | Goal-oriented dashboard: latest weight, total reduced, days elapsed, progress to target | Open |
 | CR-001 | 2026-08-18 | Medium | New | Student home | Show accumulated points on the student dashboard | Open |
@@ -100,12 +99,10 @@ _Kept in sync as entries are added/closed. Newest first._
   `multiple_choice` is already single-select radio; a Yes/No can also be a
   multiple_choice with Yes/No — but the ask is a *constrained checkbox*.)
 - **Related spec:** FR-6..10 (question types) — **new** option on an existing type.
-- **Design note (proposal):** Add optional `minSelect`/`maxSelect` to the
-  checkboxes options schema (`src/lib/questions.ts`), enforce in
-  `validateAnswerValue`, and enforce in the form UI (disable further ticks at
-  max). `maxSelect:1` covers "choose only one."
-- **Status:** Open
-- **Resolution:** —
+- **Status:** Won't do (2026-08-18) — dropped per user: `multiple_choice`
+  already provides single-select, and a Yes/No is a `multiple_choice` with
+  choices `["Yes","No"]`. No constrained-checkbox needed.
+- **Resolution:** N/A — no code change.
 
 ### CR-005 — Note/comment field on ALL question types
 - **Reported:** 2026-08-18
@@ -172,9 +169,30 @@ _Kept in sync as entries are added/closed. Newest first._
        intermediates + more tokens/cost.
      Recommendation: ship **A** now (covers most of the calorie example), design
      **B** as a follow-up if per-step control is needed.
+- **DECISION (2026-08-18):** Go with **Option A**, but persist the intermediate
+  value so it's visible and reusable. Concretely this becomes a lightweight
+  **two-pass** generation (still "A", not the generic step engine):
+  1. **Extraction pass** — for each image-analysis question, one vision call
+     analyzes the photo and returns a **structured value** (e.g.
+     `{ "calories": 650, "items": ["rice","dal"] }`).
+  2. **Store the derived value** — NOT in the student's note/comment (CR-005/006
+     are for the *human's* own text; keep them separate). Store AI output in a
+     dedicated derived field. **Proposed:** a new `Answer.derived Json?` column
+     (small schema change via the migrate diff+deploy workflow). Alternative:
+     `StoredImage.analysis Json?` (since the analysis is about the image).
+     → **Recommend `Answer.derived`.** Confirm before build.
+  3. **Report pass** — the report prompt references the stored value via a new
+     placeholder namespace, e.g. `{{q.lunch_photo.calories}}` (or
+     `{{derived.<key>.calories}}`), and computes the day's total / advice in the
+     final report.
+  Also implement the **labeled inline image** referencing (design proposal #1/#2)
+  so multiple photos are unambiguous to the model.
+- **Open decision:** storage location — `Answer.derived Json?` (recommended) vs
+  `StoredImage.analysis Json?`. And the extraction prompt/output schema (what
+  fields beyond `calories`).
 - **Related spec:** FR-26..30 (AI reports, admin prompt). Extends the placeholder
   language + report pipeline — **new**, reconcile with spec when scoped.
-- **Status:** Open
+- **Status:** Open (Option A confirmed; storage field pending your OK)
 - **Resolution:** —
 
 ### CR-008 — Missing navigation after submit / on the report view
