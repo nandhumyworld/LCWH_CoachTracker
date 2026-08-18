@@ -28,6 +28,8 @@ _Kept in sync as entries are added/closed. Newest first._
 
 | ID | Date | Sev | Type | Area | Summary | Status |
 |----|------|-----|------|------|---------|--------|
+| CR-014 | 2026-08-18 | Medium | New | Daily message | Show the daily gate message (image + text) on every login, not only the first time | Done (661a125) |
+| CR-013 | 2026-08-18 | Medium | New | Daily message | Coach can attach a picture to the scheduled daily message; students see the image + text | Done (661a125) |
 | CR-012 | 2026-08-18 | High | New | AI extraction | Extraction uses image + per-image note; auto-targets image questions; skips LLM when no image & no note (= "no meal") | Done (1135523) |
 | CR-011 | 2026-08-18 | High | Bug | Student home | Dashboard progress doesn't reflect the just-submitted weight (stale) | Done (1135523) |
 | CR-010 | 2026-08-18 | High | New | Reports | Coach + admin can regenerate extraction and/or report from a student's report anytime (after changing model/prompt) | Done (dc74888) |
