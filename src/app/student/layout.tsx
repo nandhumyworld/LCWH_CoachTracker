@@ -1,12 +1,28 @@
 import { requireRole } from "@/lib/auth-guards";
+import { prisma } from "@/lib/db";
+import { gateForStudentToday } from "@/lib/gate";
 import { SignOutButton } from "@/components/SignOutButton";
+import { GateGuard } from "./GateGuard";
 
 export default async function StudentLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  await requireRole("student");
+  const user = await requireRole("student");
+
+  // Resolve today's gate so it can block the app. Only once intake is complete
+  // (pre-intake the student is redirected to /student/intake anyway).
+  const student = await prisma.student.findUnique({
+    where: { userId: user.id },
+    select: { id: true, intakeAt: true },
+  });
+  const gate =
+    student?.intakeAt != null
+      ? await gateForStudentToday(student.id)
+      : { message: null, acknowledged: false };
+  const showGate = gate.message != null && !gate.acknowledged;
+
   return (
     <div className="min-h-screen">
       <header className="border-b">
@@ -16,6 +32,14 @@ export default async function StudentLayout({
         </div>
       </header>
       <div className="mx-auto max-w-3xl p-4">{children}</div>
+      {showGate && gate.message && (
+        <GateGuard
+          gateMessageId={gate.message.id}
+          bodyText={gate.message.bodyText}
+          ackButtonLabel={gate.message.ackButtonLabel}
+          imageRefId={gate.message.imageRefId}
+        />
+      )}
     </div>
   );
 }
