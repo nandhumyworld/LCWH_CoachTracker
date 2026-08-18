@@ -1,6 +1,6 @@
 # LCWH (Flary) — Build Progress
 
-**Last updated:** 2026-08-17 (end of Phase 5)
+**Last updated:** 2026-08-18 (end of Phase 6)
 **Active branch:** `feat/question-builder` (all phases stacked here; not yet merged to `main`)
 **Plan:** `docs/superpowers/plans/2026-08-17-lcwh-mvp.md`
 **Spec:** `docs/superpowers/specs/2026-08-17-flary-mvp-design.md`
@@ -16,7 +16,7 @@
 4. Sanity check: `npm test` (should pass 24), `npm run build` (green), `npm run dev` → http://localhost:3000.
 
 ### Verification commands
-- `npm test` — 24 unit tests (pure logic).
+- `npm test` — 41 unit tests (pure logic + mocked-IO report generation).
 - `npm run typecheck` — tsc, clean.
 - `npm run lint` — clean.
 - `npm run build` — Next standalone, green.
@@ -34,8 +34,8 @@
 | 3 | Student invite → intake → computed profile panel | ✅ done |
 | 4 | Daily check-in, image storage + auth serving, submit/lock, past days | ✅ done |
 | 5 | Per-timezone auto-submit engine + `/api/cron/auto-submit` (n8n) | ✅ done |
-| **6** | **AI reports (OpenRouter): prompt filling, generateReport, admin prompt editor** | ⏭️ **NEXT** |
-| 7 | Daily gate message + attendance | ⬜ todo |
+| 6 | AI reports (OpenRouter): prompt filling, generateReport, admin prompt editor | ✅ done |
+| **7** | **Daily gate message + attendance** | ⏭️ **NEXT** |
 | 8 | Coach dashboard + attendance view | ⬜ todo |
 | 9 | Admin settings + generation logs | ⬜ todo |
 | 10 | Photo retention cleanup + `/api/cron/photo-cleanup` (n8n) | ⬜ todo |
@@ -43,14 +43,22 @@
 
 ---
 
-## Next up: Phase 6 (AI reports via OpenRouter)
+## Phase 6 — DONE (AI reports via OpenRouter)
 
-Detailed tasks in the plan (§ "Phase 6"). Order:
-1. **6.1 Prompt filling** (`src/lib/prompt.ts`, TDD): `fillPrompt(body, ctx)` → replaces `{{q.<key>}}` and `{{profile.<field>}}`; image answers become vision inputs `{questionKey, imageId}[]`; unknown placeholders → empty + warning.
-2. **6.2 OpenRouter client + generateReport** (`src/lib/openrouter.ts`, `src/lib/report.ts`): replace the current no-op `generateReport` stub. Load answers+profile+images, resolve `modelId` (PromptTemplate → `OPENROUTER_DEFAULT_MODEL`), fill prompt, call OpenRouter (vision, images as data URLs), store body+model+tokens+cost, set status done/failed. Wire into `submitEntryAction` and `runAutoSubmit` (auto-submit already calls the stub). Add `retryReport` (admin).
-3. **6.3 Admin prompt editor** (`/admin/prompt`): edit `PromptTemplate.body` + `modelId`, show available `{{q.<key>}}` placeholders.
+Delivered (branch `feat/question-builder`, commits 402343e → 2c32949):
+- **6.1 Prompt filling** (`src/lib/prompt.ts`, unit-tested): `fillPrompt(body, ctx)` replaces `{{q.<key>}}` / `{{profile.<field>}}`; image answers become vision inputs `{questionKey, imageId}[]` (token stripped); unknown placeholders → empty + `warnings`.
+- **6.2 OpenRouter client + generateReport** (`src/lib/openrouter.ts`, `src/lib/report.ts`): vision-capable `callOpenRouter` (pure `buildMessages`/`parseCompletion`/`bufferToDataUrl` unit-tested). `generateReport` loads answers+profile+images, resolves `modelId` (coach's linked `PromptTemplate` → `OPENROUTER_DEFAULT_MODEL`), fills prompt, sends images as data URLs, records body+model+tokens+cost, sets `done`/`failed`. **It never throws** (captures its own error on the Report). Wired into `submitEntryAction` (now awaits it) and `runAutoSubmit`. Admin `retryReport` in `src/app/actions/report.ts`.
+- **6.3 Admin prompt editor** (`/admin/prompt` + `src/app/actions/prompt.ts`): edit `PromptTemplate.body` + `modelId`, bumps `version`, shows `{{q.<key>}}`/`{{profile.*}}` placeholders; saving links every coach's `ProgramSettings` to the template. Seed now creates a default template linked to the coach.
 
-**Note:** Build + unit-test with a MOCKED OpenRouter client. Full live test needs `OPENROUTER_API_KEY` in `.env`. The `generateReport` stub currently lives at `src/lib/report.ts` and is already called by `runAutoSubmit` (errors swallowed so the sweep never aborts). `submitEntryAction` creates the pending report but does NOT yet call `generateReport` — wire that in Phase 6.
+**Live-test note:** unit tests use a MOCKED OpenRouter client (`report.test.ts` mocks `@/lib/db`, `@/lib/storage`, `@/lib/openrouter`, `@/lib/env`). A full live test needs a real `OPENROUTER_API_KEY` in `.env` — then submit a day as a student and confirm the Report row fills in.
+
+**Design note:** `submitEntryAction` awaits `generateReport`, so the submit response blocks on the LLM call (acceptable for MVP single-container; revisit if latency hurts UX — could move to a queue/background).
+
+---
+
+## Next up: Phase 7 (Daily gate message + attendance)
+
+See plan § "Phase 7". Order: 7.1 gate scheduling + resolution (`src/lib/gate.ts`, TDD — pure logic in a `*-util`), then 7.2 coach composer + student full-screen gate popup + `acknowledgeGate` (attendance).
 
 ---
 
