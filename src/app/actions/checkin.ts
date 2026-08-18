@@ -5,7 +5,7 @@ import { prisma } from "@/lib/db";
 import { requireStudent } from "@/lib/auth-guards";
 import { saveAnswer, EntryLockedError } from "@/lib/daily-entry";
 import { validateAnswerValue, type QuestionLike } from "@/lib/questions";
-import { generateReport } from "@/lib/report";
+import { runReportPipeline } from "@/lib/report";
 
 export interface SaveResult {
   ok: boolean;
@@ -101,10 +101,10 @@ export async function submitEntryAction(
     }),
   ]);
 
-  // Generate the AI daily report now. generateReport records its own success/
-  // failure on the Report row and never throws, so a generation error still
-  // leaves the day submitted (the report is retryable from Admin logs).
-  await generateReport(dailyEntryId);
+  // Run the AI pipeline (image extraction → report). It records its own
+  // success/failure on the Report row and never throws, so a generation error
+  // still leaves the day submitted (the report is retryable from Admin logs).
+  await runReportPipeline(dailyEntryId);
 
   revalidatePath("/student/today");
   return { ok: true };

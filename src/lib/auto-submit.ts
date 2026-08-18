@@ -4,7 +4,7 @@ import {
   finalStatusForAutoSubmit,
   dbDateToLocalDateString,
 } from "@/lib/auto-submit-util";
-import { generateReport } from "@/lib/report";
+import { runReportPipeline } from "@/lib/report";
 
 export interface AutoSubmitSummary {
   scanned: number;
@@ -48,10 +48,10 @@ export async function runAutoSubmit(
       }),
     ]);
 
-    // Enqueue report generation. Failures here must not abort the sweep — the
-    // report is already pending and can be retried from Admin logs.
+    // Enqueue extraction + report generation. Failures here must not abort the
+    // sweep — the report is already pending and can be retried from Admin logs.
     try {
-      await generateReport(entry.id);
+      await runReportPipeline(entry.id);
     } catch {
       // swallow; report stays pending/failed and is retryable
     }

@@ -3,6 +3,7 @@ import { getStorage } from "@/lib/storage";
 import { getDefaultModel } from "@/lib/settings";
 import { fillPrompt, type PromptAnswer, type PromptContext } from "@/lib/prompt";
 import { callOpenRouter, bufferToDataUrl } from "@/lib/openrouter";
+import { runExtraction } from "@/lib/extraction";
 
 // AI daily-report generation (spec §6, FR-26..30). Loads a submitted entry's
 // answers + profile + images, fills the admin prompt template, calls OpenRouter
@@ -49,27 +50,31 @@ export async function generateReport(dailyEntryId: string): Promise<void> {
     };
 
     // Build answers keyed by question.key; image answers carry their image id.
-    // Also index live (non-deleted) image bytes by id for the vision channel.
+    // Also index live (non-deleted) image bytes by id for the vision channel,
+    // and collect AI-extracted values (Answer.derived) for {{q.key.field}}.
     const answers: Record<string, PromptAnswer> = {};
+    const derived: Record<string, Record<string, unknown>> = {};
     const imageMeta = new Map<string, { storageKey: string; mimeType: string }>();
     for (const a of entry.answers) {
       const key = a.question.key;
-      if (a.question.type === "image") {
-        if (a.imageRefId) {
-          answers[key] = { imageId: a.imageRefId };
-          if (a.imageRef && !a.imageRef.deletedAt) {
-            imageMeta.set(a.imageRefId, {
-              storageKey: a.imageRef.storageKey,
-              mimeType: a.imageRef.mimeType,
-            });
-          }
+      // Any answer with an attached image can be referenced as a photo.
+      if (a.imageRefId) {
+        answers[key] = { imageId: a.imageRefId };
+        if (a.imageRef && !a.imageRef.deletedAt) {
+          imageMeta.set(a.imageRefId, {
+            storageKey: a.imageRef.storageKey,
+            mimeType: a.imageRef.mimeType,
+          });
         }
       } else {
         answers[key] = a.value as PromptAnswer;
       }
+      if (a.derived && typeof a.derived === "object" && !Array.isArray(a.derived)) {
+        derived[key] = a.derived as Record<string, unknown>;
+      }
     }
 
-    const filled = fillPrompt(body, { profile, answers });
+    const filled = fillPrompt(body, { profile, answers, derived });
 
     const imageUrls: string[] = [];
     for (const vi of filled.images) {
@@ -106,4 +111,13 @@ export async function generateReport(dailyEntryId: string): Promise<void> {
       data: { status: "failed", error: message.slice(0, 1000), modelId },
     });
   }
+}
+
+// Full daily pipeline (CR-007): run the image-extraction pass first (populates
+// Answer.derived, best-effort), then generate the report so it can reference the
+// extracted values. Used by submit + auto-submit; regeneration can call either
+// stage independently.
+export async function runReportPipeline(dailyEntryId: string): Promise<void> {
+  await runExtraction(dailyEntryId);
+  await generateReport(dailyEntryId);
 }
