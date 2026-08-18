@@ -1,61 +1,90 @@
 import { requireRole } from "@/lib/auth-guards";
 import { prisma } from "@/lib/db";
-import { env } from "@/lib/env";
+import { getDefaultModel } from "@/lib/settings";
 import { DEFAULT_PROMPT_BODY } from "@/lib/report";
 import { PromptEditor } from "./PromptEditor";
 
-// Profile fields exposed to the prompt as {{profile.<field>}} — mirror the
-// context built in generateReport (src/lib/report.ts).
-const PROFILE_FIELDS = [
-  "bmi",
-  "bmr",
-  "weightToLoseKg",
-  "currentWeight",
-  "targetWeight",
-  "height",
-];
+// Profile fields exposed to the report prompt as {{profile.<field>}} — mirror
+// the context built in generateReport (src/lib/report.ts).
+const PROFILE_FIELDS = ["bmi", "bmr", "weightToLoseKg", "currentWeight", "targetWeight", "height"];
 
-// Admin prompt editor: edit the report prompt body + OpenRouter model with no
-// redeploy (NFR-1, FR-26). Shows the placeholders available for the current
-// question set.
+const DEFAULT_EXTRACTION_BODY =
+  "You are a nutrition vision assistant. For each meal photo below, estimate its " +
+  "calories and list the foods. Reply ONLY with JSON keyed by the image label, e.g. " +
+  '{"lunch_photo": {"calories": 650, "items": ["rice","dal"]}}. No prose.';
+
+// Admin prompt editors: the report prompt AND the image-extraction prompt
+// (CR-007), each with its own body + OpenRouter model — no redeploy (NFR-1).
 export default async function AdminPromptPage() {
   await requireRole("admin");
 
-  const [template, questions] = await Promise.all([
-    prisma.promptTemplate.findFirst({ orderBy: { updatedAt: "desc" } }),
+  const [reportTpl, extractionTpl, questions, fallbackModel] = await Promise.all([
+    prisma.promptTemplate.findFirst({
+      where: { kind: "report" },
+      orderBy: { updatedAt: "desc" },
+    }),
+    prisma.promptTemplate.findFirst({
+      where: { kind: "extraction" },
+      orderBy: { updatedAt: "desc" },
+    }),
     prisma.question.findMany({
-      select: { key: true, prompt: true },
+      select: { key: true, prompt: true, type: true, allowsImage: true },
       orderBy: { orderIndex: "asc" },
     }),
+    getDefaultModel(),
   ]);
 
-  // Distinct question keys (a key is unique per coach; MVP has one coach).
   const seen = new Set<string>();
   const questionKeys = questions.filter((q) => {
     if (seen.has(q.key)) return false;
     seen.add(q.key);
     return true;
   });
+  const imageKeys = questionKeys.filter((q) => q.type === "image" || q.allowsImage);
 
   return (
-    <main className="mx-auto max-w-3xl space-y-6 p-8">
-      <div>
-        <h1 className="text-2xl font-bold">Report prompt</h1>
-        <p className="text-muted-foreground">
-          The prompt used to generate each student&apos;s daily AI report. Changes
-          take effect immediately — no redeploy.
-        </p>
-      </div>
+    <main className="mx-auto max-w-3xl space-y-10 p-4">
+      <section className="space-y-4">
+        <div>
+          <h1 className="text-2xl font-bold">Report prompt</h1>
+          <p className="text-muted-foreground">
+            Generates each student&apos;s daily report. Can reference extracted
+            values with <code>{"{{q.<key>.calories}}"}</code>. Changes take effect
+            immediately.
+          </p>
+        </div>
+        <PromptEditor
+          kind="report"
+          id={reportTpl?.id ?? null}
+          name={reportTpl?.name ?? "Daily report"}
+          body={reportTpl?.body ?? DEFAULT_PROMPT_BODY}
+          modelId={reportTpl?.modelId ?? fallbackModel}
+          version={reportTpl?.version ?? null}
+          questionKeys={questionKeys}
+          profileFields={PROFILE_FIELDS}
+        />
+      </section>
 
-      <PromptEditor
-        id={template?.id ?? null}
-        name={template?.name ?? "Daily report"}
-        body={template?.body ?? DEFAULT_PROMPT_BODY}
-        modelId={template?.modelId ?? env.OPENROUTER_DEFAULT_MODEL}
-        version={template?.version ?? null}
-        questionKeys={questionKeys}
-        profileFields={PROFILE_FIELDS}
-      />
+      <section className="space-y-4 border-t pt-8">
+        <div>
+          <h2 className="text-2xl font-bold">Image extraction prompt</h2>
+          <p className="text-muted-foreground">
+            Runs first. Include the photo placeholders you want analyzed and ask
+            for JSON keyed by the image label; results are saved per answer and
+            usable in the report prompt. Leave unset to skip extraction.
+          </p>
+        </div>
+        <PromptEditor
+          kind="extraction"
+          id={extractionTpl?.id ?? null}
+          name={extractionTpl?.name ?? "Image extraction"}
+          body={extractionTpl?.body ?? DEFAULT_EXTRACTION_BODY}
+          modelId={extractionTpl?.modelId ?? fallbackModel}
+          version={extractionTpl?.version ?? null}
+          questionKeys={imageKeys}
+          profileFields={[]}
+        />
+      </section>
     </main>
   );
 }

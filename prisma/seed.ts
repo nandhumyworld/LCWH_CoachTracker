@@ -41,15 +41,17 @@ async function main() {
   // Default AI report prompt template, linked to the coach so generateReport
   // has a body + model without the Admin having to open the editor first.
   const coachId = coachUser.coach!.id;
+  const defaultModel = process.env.OPENROUTER_DEFAULT_MODEL ?? "openai/gpt-4o-mini";
   const existingSettings = await prisma.programSettings.findUnique({
     where: { coachId },
-    select: { promptTemplateId: true },
+    select: { promptTemplateId: true, extractionTemplateId: true },
   });
   if (!existingSettings?.promptTemplateId) {
     const template = await prisma.promptTemplate.create({
       data: {
         name: "Daily report",
-        modelId: process.env.OPENROUTER_DEFAULT_MODEL ?? "openai/gpt-4o-mini",
+        kind: "report",
+        modelId: defaultModel,
         body:
           "You are a supportive wellness coach's assistant. Using the client's " +
           "daily check-in below, write a short, encouraging daily report (3-5 " +
@@ -62,7 +64,27 @@ async function main() {
       update: { promptTemplateId: template.id },
       create: { coachId, promptTemplateId: template.id },
     });
-    console.log("Seeded prompt template:", template.id);
+    console.log("Seeded report prompt template:", template.id);
+  }
+  if (!existingSettings?.extractionTemplateId) {
+    const extraction = await prisma.promptTemplate.create({
+      data: {
+        name: "Image extraction",
+        kind: "extraction",
+        modelId: defaultModel,
+        body:
+          "You are a nutrition vision assistant. For each meal photo below, " +
+          "estimate its calories and list the foods. Reply ONLY with JSON keyed " +
+          'by the image label, e.g. {"lunch_photo": {"calories": 650, "items": ' +
+          '["rice","dal"]}}. No prose.',
+      },
+    });
+    await prisma.programSettings.upsert({
+      where: { coachId },
+      update: { extractionTemplateId: extraction.id },
+      create: { coachId, extractionTemplateId: extraction.id },
+    });
+    console.log("Seeded extraction prompt template:", extraction.id);
   }
 
   console.log("Seeded admin:", admin.email);

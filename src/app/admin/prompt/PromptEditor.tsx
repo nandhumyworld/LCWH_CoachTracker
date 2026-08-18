@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
 export function PromptEditor({
+  kind,
   id,
   name,
   body,
@@ -15,6 +16,7 @@ export function PromptEditor({
   questionKeys,
   profileFields,
 }: {
+  kind: "report" | "extraction";
   id: string | null;
   name: string;
   body: string;
@@ -34,6 +36,7 @@ export function PromptEditor({
     startTransition(async () => {
       const res = await updatePromptTemplate({
         id: id ?? undefined,
+        kind,
         name: nameVal,
         body: bodyVal,
         modelId: modelVal,
@@ -46,17 +49,17 @@ export function PromptEditor({
     <div className="space-y-5">
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="space-y-2">
-          <Label htmlFor="tpl-name">Template name</Label>
+          <Label htmlFor={`${kind}-name`}>Template name</Label>
           <Input
-            id="tpl-name"
+            id={`${kind}-name`}
             value={nameVal}
             onChange={(e) => setNameVal(e.target.value)}
           />
         </div>
         <div className="space-y-2">
-          <Label htmlFor="tpl-model">OpenRouter model id</Label>
+          <Label htmlFor={`${kind}-model`}>OpenRouter model id</Label>
           <Input
-            id="tpl-model"
+            id={`${kind}-model`}
             value={modelVal}
             onChange={(e) => setModelVal(e.target.value)}
             placeholder="e.g. anthropic/claude-3.5-sonnet"
@@ -65,9 +68,9 @@ export function PromptEditor({
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor="tpl-body">Prompt body</Label>
+        <Label htmlFor={`${kind}-body`}>Prompt body</Label>
         <textarea
-          id="tpl-body"
+          id={`${kind}-body`}
           className="min-h-[280px] w-full rounded-md border bg-transparent p-3 font-mono text-sm"
           value={bodyVal}
           onChange={(e) => setBodyVal(e.target.value)}
