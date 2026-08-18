@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { requireRole } from "@/lib/auth-guards";
 import { prisma } from "@/lib/db";
 import { gateForStudentToday } from "@/lib/gate";
@@ -27,7 +28,23 @@ export default async function StudentLayout({
     <div className="min-h-screen">
       <header className="border-b">
         <div className="mx-auto flex max-w-3xl items-center justify-between p-4">
-          <span className="font-bold text-primary">LCWH</span>
+          <nav className="flex items-center gap-4">
+            <Link href="/student" className="font-bold text-primary">
+              LCWH
+            </Link>
+            <Link
+              href="/student"
+              className="text-sm text-muted-foreground hover:text-foreground"
+            >
+              Home
+            </Link>
+            <Link
+              href="/student/today"
+              className="text-sm text-muted-foreground hover:text-foreground"
+            >
+              Today
+            </Link>
+          </nav>
           <SignOutButton />
         </div>
       </header>
