@@ -28,6 +28,8 @@ _Kept in sync as entries are added/closed. Newest first._
 
 | ID | Date | Sev | Type | Area | Summary | Status |
 |----|------|-----|------|------|---------|--------|
+| CR-010 | 2026-08-18 | High | New | Reports | Coach + admin can regenerate extraction and/or report from a student's report anytime (after changing model/prompt) | Open |
+| CR-009 | 2026-08-18 | Medium | New | Student report | Student sees the AI-extracted info (calories/items) per image on the report view | Open |
 | CR-008 | 2026-08-18 | Medium | UX | Student form | After submit + report, no way to navigate back to home/dashboard — nav missing | Open |
 | CR-007 | 2026-08-18 | High | New | AI prompt | Image-aware + multi-step ("tree of thoughts") prompt authoring: reference answer-key images in the prompt, label multiple images, chain steps (e.g. calories from photo → compute) | Open |
 | CR-006 | 2026-08-18 | Medium | New | Daily form | Allow attaching a photo to ANY question when enabled (allowsImage), separate from the answer value | Open |
@@ -189,25 +191,75 @@ _Kept in sync as entries are added/closed. Newest first._
   Also implement the **labeled inline image** referencing (design proposal #1/#2)
   so multiple photos are unambiguous to the model.
 - **DECISION (2026-08-18):** storage = **`Answer.derived Json?`** (confirmed).
-- **Confirmed 2-call flow:**
-  1. **Extraction call** — a **fixed** default extraction prompt (system-owned,
-     not the coach report prompt) takes the flagged photo(s) → returns structured
-     JSON `{ calories, items[] }` → saved to `Answer.derived`.
-  2. **Report call** — the **existing admin-editable report prompt**
-     (`/admin/prompt`) runs as today, now able to reference the extracted values
-     via `{{q.<key>.calories}}` (and photos via labeled inline images), and
-     produces the day's report.
+- **Confirmed 2-call flow (both prompts EDITABLE — updated 2026-08-18):**
+  1. **Extraction call** — an **editable** extraction PromptTemplate with its
+     **own model**, managed in the admin editor just like the report prompt. The
+     admin controls **which attachments go** by including image placeholders
+     (`{{q.lunch_photo}}`) in its body, and picks the extraction **model**. Runs
+     over the referenced photo(s) → returns structured JSON **keyed by question
+     key**, e.g. `{ "lunch_photo": { "calories": 650, "items": ["rice","dal"] } }`
+     → each result saved to that answer's **`Answer.derived`**. (One call can
+     cover multiple images; results distributed per key.)
+  2. **Report call** — the **editable report prompt** (`/admin/prompt`) runs as
+     today, now able to reference extracted values via `{{q.<key>.calories}}`
+     (and photos via labeled inline images), producing the day's report.
+- **DECISION (2026-08-18): the extraction prompt is admin-editable with its own
+  model**, parallel to the report prompt (not fixed). Admin chooses attachments
+  (via placeholders) + model for extraction.
+- **Data model implication:** need a second prompt template for extraction. Options
+  — add `PromptTemplate.kind` (`extraction` | `report`) + link both to the coach
+  (`ProgramSettings.reportTemplateId` + `extractionTemplateId`), or keep a single
+  global extraction template (admin-owned). Decide at build (single-coach MVP →
+  either works; leaning `kind` + two links).
 - **Open decisions (small):**
-  - Which questions trigger extraction? Proposed: a per-question flag (only image
-    questions marked "AI photo analysis") so we don't spend tokens on every photo.
-  - Is the extraction prompt fixed for MVP, or should Admin be able to edit it
-    later? Proposed: **fixed default now**, make it admin-editable in a follow-up.
-  - Extraction output schema: start with `{ calories:number, items:string[] }`;
+  - Extraction output schema: start `{ calories:number, items:string[] }` per key;
     extend later.
+  - Extraction triggers whenever the extraction template references image
+    placeholders that have uploads that day (no separate per-question flag needed —
+    the admin's choice of placeholders IS the trigger).
 - **Related spec:** FR-26..30 (AI reports, admin prompt). Extends the placeholder
-  language + report pipeline — **new**, reconcile with spec when scoped.
-- **Status:** Open (Option A + `Answer.derived` + 2-call flow confirmed; minor
-  extraction-trigger detail to confirm)
+  language + report pipeline + adds a second (extraction) template — **new**,
+  reconcile with spec when scoped.
+- **Status:** Open (Option A + `Answer.derived` + editable 2-call flow confirmed)
+- **Resolution:** —
+
+### CR-009 — Student sees AI-extracted info per image on the report view
+- **Reported:** 2026-08-18
+- **Severity:** Medium
+- **Type:** New
+- **Area / Screen:** `/student/day/[date]` (report view) and wherever the day's
+  report is shown.
+- **Observed / ask:** The calories/items the AI extracts from a photo aren't
+  visible to the student.
+- **Expected:** Next to each analyzed image, show the extracted info from
+  `Answer.derived` (e.g. "≈650 kcal · rice, dal") when the report is viewed. Also
+  visible to coach/admin on their report views.
+- **Related spec:** Depends on CR-007 (`Answer.derived`). **New** display.
+- **Status:** Open
+- **Resolution:** —
+
+### CR-010 — Coach + admin can regenerate extraction and/or report anytime
+- **Reported:** 2026-08-18
+- **Severity:** High
+- **Type:** New
+- **Area / Screen:** Student report views — coach at `/coach/students/[id]`
+  (per day), admin at `/admin/logs` (and/or the student report).
+- **Observed / ask:** Today only admin `retryReport` re-runs the **report** for
+  failed ones. Need broader control.
+- **Expected:** **Both coach and admin** can, from a student's report, **anytime**
+  (not just on failure):
+  - **Regenerate report** — re-run the report call with the current report prompt/model.
+  - **Regenerate extraction** — re-run the photo→`{calories,items}` extraction
+    (updates `Answer.derived`), then optionally the report.
+  So after editing the extraction or report prompt/model (in `/admin/prompt`),
+  they can re-run either stage on an existing day and see new output. Admin
+  definitely has this; coach also.
+- **Design note:** Generalize `retryReport` into `regenerate({ entryId, stage:
+  "extraction" | "report" | "both" })`, guarded for coach (own students) + admin.
+  "Change the model/prompt" happens by editing the template first, then
+  regenerating (no per-run ad-hoc override in MVP).
+- **Related spec:** Extends FR-29/30 (retry) to on-demand regenerate for coach+admin.
+- **Status:** Open
 - **Resolution:** —
 
 ### CR-008 — Missing navigation after submit / on the report view
