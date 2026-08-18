@@ -5,6 +5,7 @@ import { prisma } from "@/lib/db";
 import { requireStudent } from "@/lib/auth-guards";
 import { saveAnswer, EntryLockedError } from "@/lib/daily-entry";
 import { validateAnswerValue, type QuestionLike } from "@/lib/questions";
+import { generateReport } from "@/lib/report";
 
 export interface SaveResult {
   ok: boolean;
@@ -93,7 +94,11 @@ export async function submitEntryAction(
     }),
   ]);
 
-  // Report generation is wired in Phase 6; the report stays pending until then.
+  // Generate the AI daily report now. generateReport records its own success/
+  // failure on the Report row and never throws, so a generation error still
+  // leaves the day submitted (the report is retryable from Admin logs).
+  await generateReport(dailyEntryId);
+
   revalidatePath("/student/today");
   return { ok: true };
 }
