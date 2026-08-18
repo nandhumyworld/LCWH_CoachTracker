@@ -23,6 +23,8 @@ export interface PromptContext {
   profile: Record<string, string | number | null | undefined>;
   /** Answers keyed by `Question.key`. */
   answers: Record<string, PromptAnswer>;
+  /** AI-extracted values keyed by `Question.key`, e.g. `{ lunch_photo: { calories: 650 } }` (CR-007). */
+  derived?: Record<string, Record<string, unknown>>;
 }
 
 export interface VisionInput {
@@ -37,8 +39,10 @@ export interface FilledPrompt {
   warnings: string[];
 }
 
-// Matches `{{ q.key }}` / `{{ profile.field }}` with optional inner whitespace.
-const PLACEHOLDER = /\{\{\s*(q|profile)\.([a-zA-Z0-9_]+)\s*\}\}/g;
+// Matches `{{ q.key }}`, `{{ q.key.field }}` (derived) and `{{ profile.field }}`
+// with optional inner whitespace.
+const PLACEHOLDER =
+  /\{\{\s*(q|profile)\.([a-zA-Z0-9_]+)(?:\.([a-zA-Z0-9_]+))?\s*\}\}/g;
 
 function isImageAnswer(v: unknown): v is { imageId: string } {
   return (
@@ -60,32 +64,46 @@ export function fillPrompt(body: string, ctx: PromptContext): FilledPrompt {
   const seenImageKeys = new Set<string>();
   const warnings: string[] = [];
 
-  const text = body.replace(PLACEHOLDER, (_match, scope: string, key: string) => {
-    if (scope === "profile") {
-      const val = ctx.profile[key];
-      if (val === undefined || val === null) {
-        warnings.push(`profile.${key}`);
+  const text = body.replace(
+    PLACEHOLDER,
+    (_match, scope: string, key: string, field: string | undefined) => {
+      if (scope === "profile") {
+        const val = ctx.profile[key];
+        if (val === undefined || val === null) {
+          warnings.push(`profile.${key}`);
+          return "";
+        }
+        return String(val);
+      }
+
+      // scope === "q"
+      // Derived reference: {{q.<key>.<field>}} → AI-extracted value.
+      if (field) {
+        const val = ctx.derived?.[key]?.[field];
+        if (val === undefined || val === null) {
+          warnings.push(`q.${key}.${field}`);
+          return "";
+        }
+        return renderScalar(val as PromptAnswer);
+      }
+
+      const answer = ctx.answers[key];
+      if (answer === undefined) {
+        warnings.push(`q.${key}`);
         return "";
       }
-      return String(val);
-    }
-
-    // scope === "q"
-    const answer = ctx.answers[key];
-    if (answer === undefined) {
-      warnings.push(`q.${key}`);
-      return "";
-    }
-    if (isImageAnswer(answer)) {
-      if (!seenImageKeys.has(key)) {
-        seenImageKeys.add(key);
-        images.push({ questionKey: key, imageId: answer.imageId });
+      if (isImageAnswer(answer)) {
+        if (!seenImageKeys.has(key)) {
+          seenImageKeys.add(key);
+          images.push({ questionKey: key, imageId: answer.imageId });
+        }
+        // Labeled marker so multiple images stay distinguishable to the model;
+        // the bytes go to the vision channel in the same order.
+        return `[image: ${key}]`;
       }
-      // Image tokens carry no inline text — the bytes go to the vision channel.
-      return "";
-    }
-    return renderScalar(answer);
-  });
+      return renderScalar(answer);
+    },
+  );
 
   return { text, images, warnings };
 }

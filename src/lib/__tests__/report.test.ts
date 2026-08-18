@@ -90,7 +90,7 @@ describe("generateReport", () => {
     expect(storageGet).toHaveBeenCalledWith("students/s1/img_1.jpg");
     const callArg = callOpenRouter.mock.calls[0][0];
     expect(callArg.modelId).toBe("anthropic/claude-3.5-sonnet");
-    expect(callArg.prompt).toBe("Weight 78 vs 70. See ");
+    expect(callArg.prompt).toBe("Weight 78 vs 70. See [image: lunch_photo]");
     expect(callArg.images).toHaveLength(1);
     expect(callArg.images[0]).toMatch(/^data:image\/jpeg;base64,/);
 

@@ -9,6 +9,9 @@ const ctx = {
     lunch_photo: { imageId: "img_1" },
     meals: ["oats", "salad"],
   },
+  derived: {
+    lunch_photo: { calories: 650, items: ["rice", "dal"] },
+  },
 };
 
 describe("fillPrompt", () => {
@@ -18,29 +21,34 @@ describe("fillPrompt", () => {
     expect(out.warnings).toEqual([]);
   });
 
-  it("collects image placeholders as vision inputs and strips the token", () => {
+  it("collects image placeholders as vision inputs with a labeled marker", () => {
     const out = fillPrompt("See {{q.lunch_photo}} today", ctx);
     expect(out.images).toEqual([{ questionKey: "lunch_photo", imageId: "img_1" }]);
-    // The image token is removed from the text (no literal placeholder left).
-    expect(out.text).not.toContain("{{q.lunch_photo}}");
-    expect(out.text).toBe("See  today");
+    // The token becomes a label so multiple images stay distinguishable.
+    expect(out.text).toBe("See [image: lunch_photo] today");
   });
 
-  it("renders array (checkbox) answers as a comma-joined list", () => {
-    const out = fillPrompt("Ate {{q.meals}}", ctx);
-    expect(out.text).toBe("Ate oats, salad");
+  it("resolves derived (AI-extracted) fields via {{q.key.field}}", () => {
+    const out = fillPrompt("Lunch was {{q.lunch_photo.calories}} kcal", ctx);
+    expect(out.text).toBe("Lunch was 650 kcal");
+    expect(out.warnings).toEqual([]);
+  });
+
+  it("renders array derived/answer values as a comma list", () => {
+    expect(fillPrompt("Ate {{q.meals}}", ctx).text).toBe("Ate oats, salad");
+    expect(fillPrompt("Items: {{q.lunch_photo.items}}", ctx).text).toBe("Items: rice, dal");
   });
 
   it("replaces unknown placeholders with empty string and warns", () => {
-    const out = fillPrompt("Hi {{q.missing}} / {{profile.nope}}", ctx);
-    expect(out.text).toBe("Hi  / ");
+    const out = fillPrompt("Hi {{q.missing}} / {{profile.nope}} / {{q.lunch_photo.protein}}", ctx);
+    expect(out.text).toBe("Hi  /  / ");
     expect(out.warnings).toContain("q.missing");
     expect(out.warnings).toContain("profile.nope");
+    expect(out.warnings).toContain("q.lunch_photo.protein");
   });
 
   it("tolerates whitespace inside the braces", () => {
-    const out = fillPrompt("W {{ q.weight }}", ctx);
-    expect(out.text).toBe("W 78");
+    expect(fillPrompt("W {{ q.weight }}", ctx).text).toBe("W 78");
   });
 
   it("does not duplicate a repeated image placeholder in vision inputs", () => {
