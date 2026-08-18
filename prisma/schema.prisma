@@ -50,6 +50,11 @@ enum ReportStatus {
   failed
 }
 
+enum PromptTemplateKind {
+  report
+  extraction
+}
+
 // ---------------------------------------------------------------------------
 // Identity & roles
 // ---------------------------------------------------------------------------
@@ -168,8 +173,11 @@ model ProgramSettings {
   coach             Coach    @relation(fields: [coachId], references: [id], onDelete: Cascade)
   formDescription   String?
   submissionMessage String?
-  promptTemplateId  String?
-  promptTemplate    PromptTemplate? @relation(fields: [promptTemplateId], references: [id])
+  // Report prompt (existing) + optional image-extraction prompt (CR-007).
+  promptTemplateId     String?
+  promptTemplate       PromptTemplate? @relation("ReportTemplate", fields: [promptTemplateId], references: [id])
+  extractionTemplateId String?
+  extractionTemplate   PromptTemplate? @relation("ExtractionTemplate", fields: [extractionTemplateId], references: [id])
 }
 
 // ---------------------------------------------------------------------------
@@ -177,17 +185,19 @@ model ProgramSettings {
 // ---------------------------------------------------------------------------
 
 model PromptTemplate {
-  id        String   @id @default(cuid())
+  id        String             @id @default(cuid())
   name      String
   body      String // with {{placeholders}}
   modelId   String // OpenRouter model id
-  version   Int      @default(1)
+  kind      PromptTemplateKind @default(report)
+  version   Int                @default(1)
   updatedBy String?
-  updatedAt DateTime @updatedAt
-  createdAt DateTime @default(now())
+  updatedAt DateTime           @updatedAt
+  createdAt DateTime           @default(now())
 
-  programSettings ProgramSettings[]
-  reports         Report[]
+  reportSettings     ProgramSettings[] @relation("ReportTemplate")
+  extractionSettings ProgramSettings[] @relation("ExtractionTemplate")
+  reports            Report[]
 }
 
 // ---------------------------------------------------------------------------
@@ -221,6 +231,7 @@ model Answer {
   imageRefId   String?
   imageRef     StoredImage? @relation("AnswerImage", fields: [imageRefId], references: [id])
   note         String?
+  derived      Json? // AI-extracted values from an attached image (CR-007), e.g. { calories, items }
 
   @@unique([dailyEntryId, questionId])
 }
