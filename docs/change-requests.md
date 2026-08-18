@@ -68,8 +68,9 @@ _Kept in sync as entries are added/closed. Newest first._
   reduced** (start − latest), **days elapsed** (since intake/join), and progress
   toward the target (e.g. reduced X kg of Y kg goal over N days). Motivational.
 - **Related spec:** FR-3 (profile panel) exists; the *progress-over-time* view is
-  **new**. Depends on the daily weight answer (question key, default `weight`) —
-  tie to CR-007's key convention.
+  **new**. Depends on the daily weight answer (question key, default `weight`).
+- **DECISION (2026-08-18):** "days elapsed" is counted from the **intake date**
+  (`Student.intakeAt`), not join date.
 - **Status:** Open
 - **Resolution:** —
 
@@ -187,12 +188,26 @@ _Kept in sync as entries are added/closed. Newest first._
      final report.
   Also implement the **labeled inline image** referencing (design proposal #1/#2)
   so multiple photos are unambiguous to the model.
-- **Open decision:** storage location — `Answer.derived Json?` (recommended) vs
-  `StoredImage.analysis Json?`. And the extraction prompt/output schema (what
-  fields beyond `calories`).
+- **DECISION (2026-08-18):** storage = **`Answer.derived Json?`** (confirmed).
+- **Confirmed 2-call flow:**
+  1. **Extraction call** — a **fixed** default extraction prompt (system-owned,
+     not the coach report prompt) takes the flagged photo(s) → returns structured
+     JSON `{ calories, items[] }` → saved to `Answer.derived`.
+  2. **Report call** — the **existing admin-editable report prompt**
+     (`/admin/prompt`) runs as today, now able to reference the extracted values
+     via `{{q.<key>.calories}}` (and photos via labeled inline images), and
+     produces the day's report.
+- **Open decisions (small):**
+  - Which questions trigger extraction? Proposed: a per-question flag (only image
+    questions marked "AI photo analysis") so we don't spend tokens on every photo.
+  - Is the extraction prompt fixed for MVP, or should Admin be able to edit it
+    later? Proposed: **fixed default now**, make it admin-editable in a follow-up.
+  - Extraction output schema: start with `{ calories:number, items:string[] }`;
+    extend later.
 - **Related spec:** FR-26..30 (AI reports, admin prompt). Extends the placeholder
   language + report pipeline — **new**, reconcile with spec when scoped.
-- **Status:** Open (Option A confirmed; storage field pending your OK)
+- **Status:** Open (Option A + `Answer.derived` + 2-call flow confirmed; minor
+  extraction-trigger detail to confirm)
 - **Resolution:** —
 
 ### CR-008 — Missing navigation after submit / on the report view
