@@ -1,0 +1,46 @@
+# App-only stack that talks to the CLOUD Postgres (the managed LCWH_test DB on
+# the Coolify VPS), not a local one. Use this to run the real container locally
+# for manual testing against real data.
+#
+#   docker compose -f docker-compose.cloud.yml up --build
+#   → app on http://localhost:3000, DB = whatever DATABASE_URL points at in .env
+#
+# All configuration (DATABASE_URL, AUTH_SECRET, CRON_SECRET, OPENROUTER_API_KEY,
+# …) is read from the .env file in this directory. The entrypoint runs
+# `prisma migrate deploy` on boot (a no-op when the DB is already up to date).
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: lcwh-app
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      # Ensure the container listens on all interfaces and the uploads dir
+      # matches the mounted volume (Dockerfile sets these too; kept explicit).
+      NODE_ENV: "production"
+      HOSTNAME: "0.0.0.0"
+      PORT: "3000"
+      STORAGE_LOCAL_DIR: "/data/uploads"
+    ports:
+      - "3000:3000"
+    volumes:
+      - lcwh_uploads:/data
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://localhost:3000/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 20s
+
+volumes:
+  lcwh_uploads:

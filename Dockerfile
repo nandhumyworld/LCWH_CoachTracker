@@ -41,11 +41,12 @@ COPY --from=builder /app/public ./public
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 
-# Prisma needs the schema + engine + CLI at runtime to run migrations.
+# Prisma needs the schema + engine + CLI at runtime to run `migrate deploy`.
 COPY --from=builder /app/prisma ./prisma
-COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
-COPY --from=builder /app/node_modules/prisma ./node_modules/prisma
-COPY --from=builder /app/node_modules/@prisma ./node_modules/@prisma
+# The full node_modules (over the slim standalone one) so the Prisma CLI has all
+# its transitive deps — the modern CLI loads @prisma/config, which requires
+# `effect` and others that a selective prisma-only copy leaves out.
+COPY --from=builder --chown=nextjs:nodejs /app/node_modules ./node_modules
 
 # Entrypoint runs `prisma migrate deploy` before starting the server.
 COPY --chmod=0755 docker-entrypoint.sh ./docker-entrypoint.sh
