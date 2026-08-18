@@ -30,13 +30,13 @@ _Kept in sync as entries are added/closed. Newest first._
 |----|------|-----|------|------|---------|--------|
 | CR-010 | 2026-08-18 | High | New | Reports | Coach + admin can regenerate extraction and/or report from a student's report anytime (after changing model/prompt) | Open |
 | CR-009 | 2026-08-18 | Medium | New | Student report | Student sees the AI-extracted info (calories/items) per image on the report view | Open |
-| CR-008 | 2026-08-18 | Medium | UX | Student form | After submit + report, no way to navigate back to home/dashboard — nav missing | Open |
+| CR-008 | 2026-08-18 | Medium | UX | Student form | After submit + report, no way to navigate back to home/dashboard — nav missing | Done (08f195f) |
 | CR-007 | 2026-08-18 | High | New | AI prompt | Image-aware + multi-step ("tree of thoughts") prompt authoring: reference answer-key images in the prompt, label multiple images, chain steps (e.g. calories from photo → compute) | Open |
-| CR-006 | 2026-08-18 | Medium | New | Daily form | Allow attaching a photo to ANY question when enabled (allowsImage), separate from the answer value | Open |
-| CR-005 | 2026-08-18 | Medium | New | Daily form | Note/comment field on ALL question types, not just image | Open |
-| CR-003 | 2026-08-18 | Medium | New | Student home | Let student browse past reports by a date they pick | Open |
-| CR-002 | 2026-08-18 | High | New | Student home | Goal-oriented dashboard: latest weight, total reduced, days elapsed, progress to target | Open |
-| CR-001 | 2026-08-18 | Medium | New | Student home | Show accumulated points on the student dashboard | Open |
+| CR-006 | 2026-08-18 | Medium | New | Daily form | Allow attaching a photo to ANY question when enabled (allowsImage), separate from the answer value | Done (0cc2df6) |
+| CR-005 | 2026-08-18 | Medium | New | Daily form | Note/comment field on ALL question types, not just image | Done (0cc2df6) |
+| CR-003 | 2026-08-18 | Medium | New | Student home | Let student browse past reports by a date they pick | Done (08f195f) |
+| CR-002 | 2026-08-18 | High | New | Student home | Goal-oriented dashboard: latest weight, total reduced, days elapsed, progress to target | Done (08f195f) |
+| CR-001 | 2026-08-18 | Medium | New | Student home | Show accumulated points on the student dashboard | Done (08f195f) |
 
 ---
 
