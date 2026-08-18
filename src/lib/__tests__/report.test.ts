@@ -17,10 +17,10 @@ vi.mock("@/lib/storage", () => ({
   getStorage: () => ({ get: (...a: unknown[]) => storageGet(...a) }),
 }));
 
-// env parses the full schema on first access (DATABASE_URL etc.), which is not
-// present in unit tests — stub the only field report.ts reads.
-vi.mock("@/lib/env", () => ({
-  env: { OPENROUTER_DEFAULT_MODEL: "openai/gpt-4o-mini" },
+// report.ts resolves the fallback model via settings (SystemSetting → env);
+// stub it so no DB/env is touched.
+vi.mock("@/lib/settings", () => ({
+  getDefaultModel: () => Promise.resolve("openai/gpt-4o-mini"),
 }));
 
 const callOpenRouter = vi.fn();

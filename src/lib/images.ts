@@ -1,7 +1,7 @@
 import { randomUUID } from "crypto";
 import { prisma } from "@/lib/db";
 import { getStorage } from "@/lib/storage";
-import { env } from "@/lib/env";
+import { getPhotoRetentionDays } from "@/lib/settings";
 
 const MAX_BYTES = 10 * 1024 * 1024; // 10MB, matches next.config bodySizeLimit
 
@@ -35,9 +35,8 @@ export async function storeImageForStudent(
   const key = `students/${studentId}/${randomUUID()}.${ext}`;
   await getStorage().put({ key, body: file.buffer, mimeType });
 
-  const expiresAt = new Date(
-    Date.now() + env.PHOTO_RETENTION_DAYS * 24 * 60 * 60 * 1000,
-  );
+  const retentionDays = await getPhotoRetentionDays();
+  const expiresAt = new Date(Date.now() + retentionDays * 24 * 60 * 60 * 1000);
 
   const row = await prisma.storedImage.create({
     data: {

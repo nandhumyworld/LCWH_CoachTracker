@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/db";
 import { getStorage } from "@/lib/storage";
-import { env } from "@/lib/env";
+import { getDefaultModel } from "@/lib/settings";
 import { fillPrompt, type PromptAnswer, type PromptContext } from "@/lib/prompt";
 import { callOpenRouter, bufferToDataUrl } from "@/lib/openrouter";
 
@@ -35,7 +35,8 @@ export async function generateReport(dailyEntryId: string): Promise<void> {
 
   const template = entry.student.coach.programSettings?.promptTemplate ?? null;
   const body = template?.body ?? DEFAULT_PROMPT_BODY;
-  const modelId = template?.modelId ?? env.OPENROUTER_DEFAULT_MODEL;
+  // Model: coach's template → admin default setting → env default.
+  const modelId = template?.modelId ?? (await getDefaultModel());
 
   try {
     const profile: PromptContext["profile"] = {
