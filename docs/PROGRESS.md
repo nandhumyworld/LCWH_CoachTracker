@@ -1,6 +1,6 @@
 # LCWH (Flary) — Build Progress
 
-**Last updated:** 2026-08-18 (end of Phase 7)
+**Last updated:** 2026-08-18 (end of Phase 9)
 **Active branch:** `feat/question-builder` (all phases stacked here; not yet merged to `main`)
 **Plan:** `docs/superpowers/plans/2026-08-17-lcwh-mvp.md`
 **Spec:** `docs/superpowers/specs/2026-08-17-flary-mvp-design.md`
@@ -16,7 +16,7 @@
 4. Sanity check: `npm test` (should pass 24), `npm run build` (green), `npm run dev` → http://localhost:3000.
 
 ### Verification commands
-- `npm test` — 46 unit tests (pure logic + mocked-IO report generation).
+- `npm test` — 56 unit tests (pure logic + mocked-IO report generation).
 - `npm run typecheck` — tsc, clean.
 - `npm run lint` — clean.
 - `npm run build` — Next standalone, green.
@@ -36,9 +36,9 @@
 | 5 | Per-timezone auto-submit engine + `/api/cron/auto-submit` (n8n) | ✅ done |
 | 6 | AI reports (OpenRouter): prompt filling, generateReport, admin prompt editor | ✅ done |
 | 7 | Daily gate message + attendance | ✅ done |
-| **8** | **Coach dashboard + attendance view** | ⏭️ **NEXT** |
-| 9 | Admin settings + generation logs | ⬜ todo |
-| 10 | Photo retention cleanup + `/api/cron/photo-cleanup` (n8n) | ⬜ todo |
+| 8 | Coach dashboard + attendance view | ✅ done |
+| 9 | Admin settings + generation logs | ✅ done |
+| **10** | **Photo retention cleanup + `/api/cron/photo-cleanup` (n8n)** | ⏭️ **NEXT** |
 | 11 | Deploy hardening on Coolify | ⬜ todo |
 
 ---
@@ -66,9 +66,19 @@ Delivered (commits 117a471 → ce96e8d):
 
 ---
 
-## Next up: Phase 8 (Coach dashboard + attendance view)
+## Phase 8 — DONE (Coach dashboard + attendance view)
 
-See plan § "Phase 8". 8.1 all-student dashboard (`/coach` today-status list + `/coach/students/[id]` daily history + regenerate-profile) and 8.2 attendance view (`/coach/attendance`, per-date acks with date picker, FR-25). `src/lib/dashboard.ts` for any pure aggregation helpers.
+Commits 7d01e42 → 43920b7. `src/lib/dashboard.ts` pure helpers (`todayStatusLabel`, `reportStatusLabel`, `pickWeight`, unit-tested). `/coach` = all-student roster with today's status/report/latest-weight (today per student tz). `/coach/students/[id]` gained a collapsible read-only daily history (answers incl. photos + report). `/coach/attendance` = per-date gate acknowledgements w/ date picker (FR-25). Nav updated.
+
+## Phase 9 — DONE (Admin surface)
+
+Commits 58918e7 → 3939a4f. `src/lib/settings-util.ts` (pure `parseRetentionDays` + `SETTING_KEYS`, unit-tested) + `src/lib/settings.ts` (get/set + `getPhotoRetentionDays`/`getDefaultModel`, SystemSetting → env fallback). `report.ts` fallback model now via `getDefaultModel`; `images.ts` upload expiry via `getPhotoRetentionDays`. New admin layout/nav + overview, `/admin/settings` (retention + default model), `/admin/logs` (reports w/ status/model/tokens/cost/error + Retry on failed → `retryReport`).
+
+---
+
+## Next up: Phase 10 (Photo retention cleanup — cron)
+
+See plan § "Phase 10". TDD (mock prisma + storage) `src/lib/photo-cleanup.ts::runPhotoCleanup(now)`: find `StoredImage` with `expiresAt < now` and `deletedAt=null`, call `getStorage().delete(storageKey)`, set `deletedAt` (keep the metadata row, NFR-3). Retention days from `getPhotoRetentionDays()`. Wire `POST /api/cron/photo-cleanup` → `runPhotoCleanup()`. Then Phase 11 = deploy hardening.
 
 ---
 
