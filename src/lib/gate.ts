@@ -46,6 +46,21 @@ export async function scheduleGateMessage(
   return { ok: true, id: row.id };
 }
 
+// Deletes a scheduled gate message (coach-scoped). Editing content reuses
+// scheduleGateMessage (upsert by date); this removes one entirely (CR-015).
+export async function deleteGateMessage(
+  coachId: string,
+  gateMessageId: string,
+): Promise<{ ok: boolean; error?: string }> {
+  const msg = await prisma.dailyGateMessage.findUnique({
+    where: { id: gateMessageId },
+    select: { coachId: true },
+  });
+  if (!msg || msg.coachId !== coachId) return { ok: false, error: "Message not found." };
+  await prisma.dailyGateMessage.delete({ where: { id: gateMessageId } });
+  return { ok: true };
+}
+
 export interface GateForToday {
   message: DailyGateMessage | null;
   acknowledged: boolean;

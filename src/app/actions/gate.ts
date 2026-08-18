@@ -3,7 +3,11 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { requireCoach } from "@/lib/auth-guards";
-import { scheduleGateMessage, type ScheduleGateResult } from "@/lib/gate";
+import {
+  scheduleGateMessage,
+  deleteGateMessage,
+  type ScheduleGateResult,
+} from "@/lib/gate";
 import { storeImageForCoach } from "@/lib/images";
 
 export interface GateUploadResult {
@@ -42,6 +46,16 @@ export async function scheduleGateAction(
     return { ok: false, error: parsed.error.issues[0]?.message ?? "Invalid input." };
 
   const res = await scheduleGateMessage({ coachId, ...parsed.data });
+  if (res.ok) revalidatePath("/coach/gate");
+  return res;
+}
+
+// Deletes a scheduled gate message the coach owns (CR-015).
+export async function deleteGateAction(
+  gateMessageId: string,
+): Promise<{ ok: boolean; error?: string }> {
+  const { coachId } = await requireCoach();
+  const res = await deleteGateMessage(coachId, gateMessageId);
   if (res.ok) revalidatePath("/coach/gate");
   return res;
 }
