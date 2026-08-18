@@ -28,6 +28,8 @@ _Kept in sync as entries are added/closed. Newest first._
 
 | ID | Date | Sev | Type | Area | Summary | Status |
 |----|------|-----|------|------|---------|--------|
+| CR-012 | 2026-08-18 | High | New | AI extraction | Extraction uses image + per-image note; auto-targets image questions; skips LLM when no image & no note (= "no meal") | Done (1135523) |
+| CR-011 | 2026-08-18 | High | Bug | Student home | Dashboard progress doesn't reflect the just-submitted weight (stale) | Done (1135523) |
 | CR-010 | 2026-08-18 | High | New | Reports | Coach + admin can regenerate extraction and/or report from a student's report anytime (after changing model/prompt) | Done (dc74888) |
 | CR-009 | 2026-08-18 | Medium | New | Student report | Student sees the AI-extracted info (calories/items) per image on the report view | Done (dc74888) |
 | CR-008 | 2026-08-18 | Medium | UX | Student form | After submit + report, no way to navigate back to home/dashboard — nav missing | Done (08f195f) |
@@ -276,6 +278,44 @@ _Kept in sync as entries are added/closed. Newest first._
   Home link). `/student/day/[date]` already has a "← Home" link; `/student/today`
   needs one, especially in the post-submit state.
 - **Related spec:** UX gap, within FR-11..18 intent.
+- **Status:** Open
+- **Resolution:** —
+
+### CR-011 — Dashboard progress doesn't reflect the just-submitted weight
+- **Reported:** 2026-08-18
+- **Severity:** High
+- **Type:** Bug
+- **Area / Screen:** `/student` after submitting on `/student/today`
+- **Observed:** After submitting the day, the goal-progress card still shows the
+  old latest weight — the newly entered value isn't picked up.
+- **Expected:** The dashboard reflects the latest logged weight immediately.
+- **Cause:** `submitEntryAction` only revalidated `/student/today`, so the
+  cached `/student` RSC stayed stale.
+- **Fix:** revalidate `/student` on submit (and on regenerate).
+- **Status:** Open
+- **Resolution:** —
+
+### CR-012 — Extraction: use image + note, auto-target, skip empties as "no meal"
+- **Reported:** 2026-08-18
+- **Severity:** High
+- **Type:** New
+- **Area / Screen:** `src/lib/extraction.ts`, admin extraction prompt
+- **Ask:**
+  1. Estimate calories from **the image AND the student's note** for each meal.
+  2. **Determine which question** to analyze automatically.
+  3. **Skip the LLM** when a meal has neither image nor note, and record it as
+     "no meal taken" instead of calling the model.
+- **Design (implemented):**
+  - **Targets** = the image-type questions (the "meal" questions); no manual
+    placeholder wiring needed. Each is analyzed independently.
+  - For each meal answer, the extraction call includes a labeled line with the
+    student's **note** plus the **photo** (photo optional — a note-only meal is
+    estimated from the description).
+  - If an answer has **no image and no note** → mark
+    `Answer.derived = { skipped: true, status: "no meal logged", calories: 0 }`
+    and **do not** call the LLM for it. Report/UI show "No meal logged".
+  - The admin extraction prompt body is the instruction + required JSON format
+    (keyed by question key); the system attaches the meals automatically.
 - **Status:** Open
 - **Resolution:** —
 
