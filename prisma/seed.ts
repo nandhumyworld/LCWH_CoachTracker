@@ -38,8 +38,35 @@ async function main() {
     include: { coach: true },
   });
 
+  // Default AI report prompt template, linked to the coach so generateReport
+  // has a body + model without the Admin having to open the editor first.
+  const coachId = coachUser.coach!.id;
+  const existingSettings = await prisma.programSettings.findUnique({
+    where: { coachId },
+    select: { promptTemplateId: true },
+  });
+  if (!existingSettings?.promptTemplateId) {
+    const template = await prisma.promptTemplate.create({
+      data: {
+        name: "Daily report",
+        modelId: process.env.OPENROUTER_DEFAULT_MODEL ?? "openai/gpt-4o-mini",
+        body:
+          "You are a supportive wellness coach's assistant. Using the client's " +
+          "daily check-in below, write a short, encouraging daily report (3-5 " +
+          "sentences). Note progress toward their goals and one concrete, kind " +
+          "suggestion for tomorrow. Do not invent data that is not provided.",
+      },
+    });
+    await prisma.programSettings.upsert({
+      where: { coachId },
+      update: { promptTemplateId: template.id },
+      create: { coachId, promptTemplateId: template.id },
+    });
+    console.log("Seeded prompt template:", template.id);
+  }
+
   console.log("Seeded admin:", admin.email);
-  console.log("Seeded coach:", coachUser.email, "coachId:", coachUser.coach?.id);
+  console.log("Seeded coach:", coachUser.email, "coachId:", coachId);
 }
 
 main()
