@@ -53,6 +53,7 @@ export function pickWeight(answers: AnswerLike[], key = "weight"): number | null
 export function formatDerived(derived: unknown): string | null {
   if (!derived || typeof derived !== "object" || Array.isArray(derived)) return null;
   const d = derived as Record<string, unknown>;
+  if (d.skipped === true) return "No meal logged";
   const parts: string[] = [];
   if (typeof d.calories === "number") parts.push(`≈${d.calories} kcal`);
   if (Array.isArray(d.items) && d.items.length > 0) parts.push(d.items.join(", "));

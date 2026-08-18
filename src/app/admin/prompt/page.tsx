@@ -69,9 +69,11 @@ export default async function AdminPromptPage() {
         <div>
           <h2 className="text-2xl font-bold">Image extraction prompt</h2>
           <p className="text-muted-foreground">
-            Runs first. Include the photo placeholders you want analyzed and ask
-            for JSON keyed by the image label; results are saved per answer and
-            usable in the report prompt. Leave unset to skip extraction.
+            Runs first. The system automatically attaches every meal photo (each
+            image question) <em>and its note</em>; a meal with no photo and no
+            note is recorded as &quot;no meal logged&quot; without calling the
+            model. Write the instructions + the required JSON format keyed by the
+            question key (the labels below). Leave unset to skip extraction.
           </p>
         </div>
         <PromptEditor

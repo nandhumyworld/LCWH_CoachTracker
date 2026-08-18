@@ -79,5 +79,6 @@ export async function regenerateReportAction(input: {
 
   revalidatePath("/admin/logs");
   revalidatePath(`/coach/students`);
+  revalidatePath("/student");
   return { ok: true };
 }

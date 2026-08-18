@@ -107,5 +107,6 @@ export async function submitEntryAction(
   await runReportPipeline(dailyEntryId);
 
   revalidatePath("/student/today");
+  revalidatePath("/student"); // dashboard progress reflects the new weight (CR-011)
   return { ok: true };
 }

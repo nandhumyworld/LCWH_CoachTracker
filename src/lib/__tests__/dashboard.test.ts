@@ -59,6 +59,11 @@ describe("formatDerived", () => {
   it("includes other scalar fields", () => {
     expect(formatDerived({ protein: "20g" })).toBe("protein: 20g");
   });
+  it("shows 'No meal logged' for a skipped meal", () => {
+    expect(formatDerived({ skipped: true, status: "no meal logged", calories: 0 })).toBe(
+      "No meal logged",
+    );
+  });
   it("returns null for empty/invalid input", () => {
     expect(formatDerived(null)).toBeNull();
     expect(formatDerived({})).toBeNull();
