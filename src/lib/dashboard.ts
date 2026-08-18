@@ -47,3 +47,18 @@ export function pickWeight(answers: AnswerLike[], key = "weight"): number | null
   const a = answers.find((x) => x.question.key === key);
   return typeof a?.value === "number" ? a.value : null;
 }
+
+// Human summary of an answer's AI-extracted values (Answer.derived, CR-007/009),
+// e.g. "≈650 kcal · rice, dal". Null when there's nothing to show.
+export function formatDerived(derived: unknown): string | null {
+  if (!derived || typeof derived !== "object" || Array.isArray(derived)) return null;
+  const d = derived as Record<string, unknown>;
+  const parts: string[] = [];
+  if (typeof d.calories === "number") parts.push(`≈${d.calories} kcal`);
+  if (Array.isArray(d.items) && d.items.length > 0) parts.push(d.items.join(", "));
+  for (const [k, v] of Object.entries(d)) {
+    if (k === "calories" || k === "items") continue;
+    if (typeof v === "string" || typeof v === "number") parts.push(`${k}: ${v}`);
+  }
+  return parts.length > 0 ? parts.join(" · ") : null;
+}

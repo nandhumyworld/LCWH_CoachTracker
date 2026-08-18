@@ -3,6 +3,7 @@ import {
   todayStatusLabel,
   reportStatusLabel,
   pickWeight,
+  formatDerived,
 } from "@/lib/dashboard";
 
 describe("todayStatusLabel", () => {
@@ -46,5 +47,21 @@ describe("pickWeight", () => {
     expect(
       pickWeight([{ question: { key: "body_weight", type: "number" }, value: 80 }], "body_weight"),
     ).toBe(80);
+  });
+});
+
+describe("formatDerived", () => {
+  it("summarizes calories + items", () => {
+    expect(formatDerived({ calories: 650, items: ["rice", "dal"] })).toBe(
+      "≈650 kcal · rice, dal",
+    );
+  });
+  it("includes other scalar fields", () => {
+    expect(formatDerived({ protein: "20g" })).toBe("protein: 20g");
+  });
+  it("returns null for empty/invalid input", () => {
+    expect(formatDerived(null)).toBeNull();
+    expect(formatDerived({})).toBeNull();
+    expect(formatDerived("nope")).toBeNull();
   });
 });

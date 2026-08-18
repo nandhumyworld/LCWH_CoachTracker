@@ -3,8 +3,9 @@ import Link from "next/link";
 import { requireCoach } from "@/lib/auth-guards";
 import { prisma } from "@/lib/db";
 import { localDateFor } from "@/lib/day";
-import { todayStatusLabel, reportStatusLabel } from "@/lib/dashboard";
+import { todayStatusLabel, reportStatusLabel, formatDerived } from "@/lib/dashboard";
 import { ProfilePanelCard } from "@/components/ProfilePanelCard";
+import { RegenerateControls } from "@/components/RegenerateControls";
 import { RegenerateButton } from "./RegenerateButton";
 
 // Formats a stored answer value for read-only display.
@@ -95,12 +96,14 @@ export default async function CoachStudentPage({
                         <p className="whitespace-pre-wrap text-sm">{entry.report.body}</p>
                       </div>
                     )}
+                    <RegenerateControls dailyEntryId={entry.id} />
                     <dl className="space-y-2 text-sm">
                       {entry.answers.length === 0 ? (
                         <p className="text-muted-foreground">No answers recorded.</p>
                       ) : (
                         entry.answers.map((a) => {
                           const text = formatValue(a.value, a.imageRefId);
+                          const extracted = formatDerived(a.derived);
                           return (
                             <div key={a.id}>
                               <dt className="text-muted-foreground">{a.question.prompt}</dt>
@@ -117,6 +120,9 @@ export default async function CoachStudentPage({
                                 )}
                                 {a.note && (
                                   <span className="ml-2 text-muted-foreground">({a.note})</span>
+                                )}
+                                {extracted && (
+                                  <p className="mt-1 text-xs text-primary">AI: {extracted}</p>
                                 )}
                               </dd>
                             </div>

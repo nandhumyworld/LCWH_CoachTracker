@@ -42,6 +42,7 @@ export default async function DayPage({
       value: a?.value ?? null,
       note: a?.note ?? "",
       imageId: a?.imageRefId ?? null,
+      derived: (a?.derived as Record<string, unknown> | null) ?? null,
     };
   });
 

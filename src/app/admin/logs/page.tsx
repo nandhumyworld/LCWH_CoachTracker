@@ -2,7 +2,7 @@ import { requireRole } from "@/lib/auth-guards";
 import { prisma } from "@/lib/db";
 import { localDateFor } from "@/lib/day";
 import { reportStatusLabel } from "@/lib/dashboard";
-import { RetryButton } from "./RetryButton";
+import { RegenerateControls } from "@/components/RegenerateControls";
 
 // Admin generation logs: every report with status, model, tokens, cost, and
 // error, plus a retry button for failed ones (FR-29/30).
@@ -74,7 +74,7 @@ export default async function AdminLogsPage() {
                     {r.costEstimate != null ? `$${r.costEstimate.toFixed(5)}` : "—"}
                   </td>
                   <td className="p-3">
-                    {r.status === "failed" && <RetryButton reportId={r.id} />}
+                    <RegenerateControls dailyEntryId={r.dailyEntryId} />
                   </td>
                 </tr>
               ))}

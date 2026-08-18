@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import type { QuestionType } from "@/lib/questions";
 import { saveAnswerAction, submitEntryAction } from "@/app/actions/checkin";
 import { uploadPhotoAction } from "@/app/actions/upload";
+import { formatDerived } from "@/lib/dashboard";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
@@ -22,6 +23,7 @@ export interface FormQuestion {
   value: unknown;
   note: string;
   imageId: string | null;
+  derived: Record<string, unknown> | null;
 }
 
 type Values = Record<string, unknown>;
@@ -187,6 +189,9 @@ export function DailyForm({
                   </div>
                 )}
 
+                {/* AI-extracted info from the photo (CR-009). */}
+                <DerivedLine derived={q.derived} />
+
                 {/* Note / comment on every question (CR-005). */}
                 <NoteField
                   value={notes[q.id]}
@@ -222,6 +227,11 @@ export function DailyForm({
       )}
     </div>
   );
+}
+
+function DerivedLine({ derived }: { derived: Record<string, unknown> | null }) {
+  const s = formatDerived(derived);
+  return s ? <p className="text-xs text-primary">AI: {s}</p> : null;
 }
 
 function NoteField({
