@@ -26,6 +26,7 @@ export interface FormQuestion {
 
 type Values = Record<string, unknown>;
 type Images = Record<string, string | null>;
+type Notes = Record<string, string>;
 
 export function DailyForm({
   entryId,
@@ -50,6 +51,9 @@ export function DailyForm({
   const [images, setImages] = useState<Images>(() =>
     Object.fromEntries(questions.map((q) => [q.id, q.imageId])),
   );
+  const [notes, setNotes] = useState<Notes>(() =>
+    Object.fromEntries(questions.map((q) => [q.id, q.note])),
+  );
   const [error, setError] = useState<string | null>(null);
   const [missing, setMissing] = useState<string[]>([]);
   const [done, setDone] = useState(readOnly);
@@ -63,16 +67,23 @@ export function DailyForm({
     return [...map.entries()];
   }, [questions]);
 
-  function persist(questionId: string, value: unknown) {
+  function persistValue(questionId: string, value: unknown) {
     if (readOnly) return;
     saveAnswerAction({ dailyEntryId: entryId, questionId, value }).then((r) => {
       if (!r.ok) setError(r.error ?? "Could not save.");
     });
   }
 
+  function persistNote(questionId: string, note: string) {
+    if (readOnly) return;
+    saveAnswerAction({ dailyEntryId: entryId, questionId, note }).then((r) => {
+      if (!r.ok) setError(r.error ?? "Could not save note.");
+    });
+  }
+
   function setValue(questionId: string, value: unknown, save = true) {
     setValues((v) => ({ ...v, [questionId]: value }));
-    if (save) persist(questionId, value);
+    if (save) persistValue(questionId, value);
   }
 
   async function upload(questionId: string, file: File) {
@@ -86,8 +97,8 @@ export function DailyForm({
       setError(res.error ?? "Upload failed.");
       return;
     }
+    // The server links imageRefId (and, for image-type questions, the value).
     setImages((m) => ({ ...m, [questionId]: res.imageId ?? null }));
-    setValue(questionId, res.imageId, false);
   }
 
   function submit() {
@@ -108,7 +119,7 @@ export function DailyForm({
   if (done) {
     return (
       <Card>
-        <CardContent className="space-y-2 p-6">
+        <CardContent className="space-y-3 p-6">
           <p className="font-medium">
             {status === "auto_submitted"
               ? "This day was auto-submitted at your local cutoff."
@@ -117,6 +128,9 @@ export function DailyForm({
           <p className="text-sm text-muted-foreground">
             Report: {reportStatus ?? "pending"}.
           </p>
+          <div className="flex gap-3 pt-1">
+            <Button onClick={() => router.push("/student")}>Back to dashboard</Button>
+          </div>
         </CardContent>
       </Card>
     );
@@ -139,14 +153,48 @@ export function DailyForm({
                 {q.helpText && (
                   <p className="text-xs text-muted-foreground">{q.helpText}</p>
                 )}
+
                 <QuestionInput
                   q={q}
                   value={values[q.id]}
                   imageId={images[q.id]}
                   readOnly={readOnly}
                   onChange={(v) => setValue(q.id, v)}
-                  onBlurSave={(v) => persist(q.id, v)}
+                  onBlurSave={(v) => persistValue(q.id, v)}
                   onUpload={(f) => upload(q.id, f)}
+                />
+
+                {/* Supplemental photo on non-image questions when enabled (CR-006). */}
+                {q.type !== "image" && q.allowsImage && (
+                  <div className="pt-1">
+                    <p className="mb-1 text-xs text-muted-foreground">
+                      Attach a photo (optional)
+                    </p>
+                    {readOnly ? (
+                      images[q.id] ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={`/api/images/${images[q.id]}`}
+                          alt="attachment"
+                          className="max-h-48 rounded-md border"
+                        />
+                      ) : (
+                        <p className="text-sm text-muted-foreground">No photo.</p>
+                      )
+                    ) : (
+                      <ImageField imageId={images[q.id]} onUpload={(f) => upload(q.id, f)} />
+                    )}
+                  </div>
+                )}
+
+                {/* Note / comment on every question (CR-005). */}
+                <NoteField
+                  value={notes[q.id]}
+                  readOnly={readOnly}
+                  onSave={(n) => {
+                    setNotes((m) => ({ ...m, [q.id]: n }));
+                    persistNote(q.id, n);
+                  }}
                 />
               </CardContent>
             </Card>
@@ -173,6 +221,33 @@ export function DailyForm({
         </Button>
       )}
     </div>
+  );
+}
+
+function NoteField({
+  value,
+  readOnly,
+  onSave,
+}: {
+  value: string;
+  readOnly: boolean;
+  onSave: (v: string) => void;
+}) {
+  if (readOnly) {
+    return value ? (
+      <p className="text-sm text-muted-foreground">
+        <span className="font-medium">Note:</span> {value}
+      </p>
+    ) : null;
+  }
+  return (
+    <input
+      type="text"
+      placeholder="Add a note (optional)"
+      defaultValue={value}
+      onBlur={(e) => onSave(e.target.value)}
+      className="w-full rounded-md border bg-transparent p-2 text-sm"
+    />
   );
 }
 

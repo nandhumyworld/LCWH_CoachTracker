@@ -12,9 +12,10 @@ export interface UploadResult {
   url?: string;
 }
 
-// Uploads a photo for an image-type question, stores it via StorageService, and
-// links it to the answer. The answer value is set to the image id so required
-// validation passes.
+// Uploads a photo and links it to the answer's imageRefId. For an image-type
+// question the photo IS the answer (value is set to the image id so required
+// validation passes). For any other question with allowsImage (CR-006) the photo
+// is supplemental — only imageRefId is set, the scalar answer value is untouched.
 export async function uploadPhotoAction(
   formData: FormData,
 ): Promise<UploadResult> {
@@ -25,10 +26,16 @@ export async function uploadPhotoAction(
 
   if (!(file instanceof File)) return { ok: false, error: "No file provided." };
 
-  const entry = await prisma.dailyEntry.findUnique({
-    where: { id: dailyEntryId },
-    select: { studentId: true, status: true },
-  });
+  const [entry, question] = await Promise.all([
+    prisma.dailyEntry.findUnique({
+      where: { id: dailyEntryId },
+      select: { studentId: true, status: true },
+    }),
+    prisma.question.findUnique({
+      where: { id: questionId },
+      select: { type: true },
+    }),
+  ]);
   if (!entry || entry.studentId !== studentId)
     return { ok: false, error: "Entry not found." };
   if (entry.status !== "open")
@@ -41,13 +48,13 @@ export async function uploadPhotoAction(
   });
   if (!stored.ok) return { ok: false, error: stored.error };
 
+  const isImageAnswer = question?.type === "image";
   try {
-    await saveAnswer({
-      dailyEntryId,
-      questionId,
-      value: stored.id, // image ref id doubles as the answer value
-      imageRefId: stored.id,
-    });
+    await saveAnswer(
+      isImageAnswer
+        ? { dailyEntryId, questionId, value: stored.id, imageRefId: stored.id }
+        : { dailyEntryId, questionId, imageRefId: stored.id },
+    );
   } catch (err) {
     if (err instanceof EntryLockedError) return { ok: false, error: err.message };
     throw err;

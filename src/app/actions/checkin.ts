@@ -23,6 +23,8 @@ async function ownedEntry(dailyEntryId: string, studentId: string) {
 }
 
 // Persists one answer as the student edits (autosave). Locked entries reject.
+// Only the fields present on `input` are written (partial), so a value edit and
+// a note edit (CR-005) don't overwrite each other.
 export async function saveAnswerAction(input: {
   dailyEntryId: string;
   questionId: string;
@@ -32,13 +34,18 @@ export async function saveAnswerAction(input: {
   const { studentId } = await requireStudent();
   const entry = await ownedEntry(input.dailyEntryId, studentId);
   if (!entry) return { ok: false, error: "Entry not found." };
+
+  const patch: {
+    dailyEntryId: string;
+    questionId: string;
+    value?: unknown;
+    note?: string | null;
+  } = { dailyEntryId: input.dailyEntryId, questionId: input.questionId };
+  if ("value" in input) patch.value = input.value;
+  if ("note" in input) patch.note = input.note ?? null;
+
   try {
-    await saveAnswer({
-      dailyEntryId: input.dailyEntryId,
-      questionId: input.questionId,
-      value: input.value,
-      note: input.note ?? null,
-    });
+    await saveAnswer(patch);
     return { ok: true };
   } catch (err) {
     if (err instanceof EntryLockedError) return { ok: false, error: err.message };
