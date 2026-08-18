@@ -4,6 +4,26 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { requireCoach } from "@/lib/auth-guards";
 import { scheduleGateMessage, type ScheduleGateResult } from "@/lib/gate";
+import { storeImageForCoach } from "@/lib/images";
+
+export interface GateUploadResult {
+  ok: boolean;
+  error?: string;
+  imageId?: string;
+}
+
+// Uploads a picture for a daily gate message (coach-owned image, CR-013).
+export async function uploadGateImageAction(
+  formData: FormData,
+): Promise<GateUploadResult> {
+  const { coachId } = await requireCoach();
+  const file = formData.get("file");
+  if (!(file instanceof File)) return { ok: false, error: "No file provided." };
+  const buffer = Buffer.from(await file.arrayBuffer());
+  const stored = await storeImageForCoach(coachId, { buffer, mimeType: file.type });
+  if (!stored.ok) return { ok: false, error: stored.error };
+  return { ok: true, imageId: stored.id };
+}
 
 const input = z.object({
   scheduledDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Pick a valid date."),

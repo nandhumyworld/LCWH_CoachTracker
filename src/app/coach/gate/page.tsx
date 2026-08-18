@@ -21,6 +21,7 @@ export default async function CoachGatePage() {
     date: localDateFor("UTC", m.scheduledDate),
     bodyText: m.bodyText,
     ackButtonLabel: m.ackButtonLabel,
+    imageRefId: m.imageRefId,
     acks: m._count.acknowledgements,
   }));
 

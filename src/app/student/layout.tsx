@@ -22,7 +22,9 @@ export default async function StudentLayout({
     student?.intakeAt != null
       ? await gateForStudentToday(student.id)
       : { message: null, acknowledged: false };
-  const showGate = gate.message != null && !gate.acknowledged;
+  // Shown on every login while a message is scheduled for today (CR-014); the
+  // popup handles per-session dismissal client-side after acknowledgement.
+  const showGate = gate.message != null;
 
   return (
     <div className="min-h-screen">

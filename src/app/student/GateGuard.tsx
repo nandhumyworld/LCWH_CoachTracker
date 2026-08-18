@@ -1,13 +1,13 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { acknowledgeGateAction } from "@/app/actions/attendance";
 import { Button } from "@/components/ui/button";
 
-// Full-screen, mandatory daily message. Blocks the student app until the ack
-// button is tapped (FR-21/22); acknowledging records attendance (FR-23) and
-// dismisses the popup via a router refresh.
+// Full-screen daily message shown on every login while a message is scheduled
+// (CR-014). The first acknowledgement records attendance (FR-23); after that,
+// it is dismissed for the current browser session (re-appears on next login).
 export function GateGuard({
   gateMessageId,
   bodyText,
@@ -22,15 +22,29 @@ export function GateGuard({
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
+  const [dismissed, setDismissed] = useState(true); // hidden until we check session
+
+  const storageKey = `gate-seen-${gateMessageId}`;
+
+  useEffect(() => {
+    setDismissed(sessionStorage.getItem(storageKey) === "1");
+  }, [storageKey]);
 
   function acknowledge() {
     setError(null);
     startTransition(async () => {
       const res = await acknowledgeGateAction(gateMessageId);
-      if (res.ok) router.refresh();
-      else setError(res.error ?? "Could not acknowledge. Try again.");
+      if (res.ok) {
+        sessionStorage.setItem(storageKey, "1");
+        setDismissed(true);
+        router.refresh();
+      } else {
+        setError(res.error ?? "Could not acknowledge. Try again.");
+      }
     });
   }
+
+  if (dismissed) return null;
 
   return (
     <div

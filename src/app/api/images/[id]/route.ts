@@ -16,7 +16,12 @@ export async function GET(
   const image = await prisma.storedImage.findUnique({ where: { id } });
   if (!image || image.deletedAt) return new Response("Not found", { status: 404 });
 
-  if (!(await canViewImage(user, image.ownerStudentId)))
+  if (
+    !(await canViewImage(user, {
+      ownerStudentId: image.ownerStudentId,
+      ownerCoachId: image.ownerCoachId,
+    }))
+  )
     return new Response("Forbidden", { status: 403 });
 
   const file = await getStorage().get(image.storageKey);
