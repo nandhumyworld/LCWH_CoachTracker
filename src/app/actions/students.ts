@@ -1,11 +1,11 @@
 "use server";
 
-import { headers } from "next/headers";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { prisma } from "@/lib/db";
 import { requireCoach } from "@/lib/auth-guards";
 import { createInvite } from "@/lib/invites";
+import { originUrl } from "@/lib/origin";
 
 export interface InviteResult {
   ok: boolean;
@@ -17,16 +17,6 @@ const inviteInput = z.object({
   name: z.string().min(1),
   email: z.string().email(),
 });
-
-// Builds an absolute URL from the incoming request origin (falls back to
-// AUTH_URL) so the invite link works in dev and prod without hardcoding.
-async function originUrl(path: string): Promise<string> {
-  const h = await headers();
-  const host = h.get("x-forwarded-host") ?? h.get("host");
-  const proto = h.get("x-forwarded-proto") ?? "http";
-  const base = host ? `${proto}://${host}` : (process.env.AUTH_URL ?? "");
-  return `${base}${path}`;
-}
 
 // Coach invites a student by name + email. Creates a passwordless student user
 // and returns a one-time set-password link for the coach to share.

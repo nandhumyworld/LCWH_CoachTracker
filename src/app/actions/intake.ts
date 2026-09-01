@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { prisma } from "@/lib/db";
 import { requireStudent, requireCoach } from "@/lib/auth-guards";
-import { computeProfile } from "@/lib/profile";
+import { writeProfilePanel } from "@/lib/profile-panel";
 
 export interface ActionResult {
   ok: boolean;
@@ -27,35 +27,6 @@ function isValidTimezone(tz: string): boolean {
   } catch {
     return false;
   }
-}
-
-// Persists the profile panel for a student from their intake numbers.
-async function writeProfilePanel(
-  studentId: string,
-  input: {
-    heightCm: number;
-    currentWeightKg: number;
-    targetWeightKg: number;
-  },
-) {
-  const p = computeProfile(input);
-  await prisma.profilePanel.upsert({
-    where: { studentId },
-    update: {
-      bmi: p.bmi,
-      bmr: p.bmr,
-      weightToLoseKg: p.weightToLoseKg,
-      computed: { bmiCategory: p.bmiCategory },
-      generatedAt: new Date(),
-    },
-    create: {
-      studentId,
-      bmi: p.bmi,
-      bmr: p.bmr,
-      weightToLoseKg: p.weightToLoseKg,
-      computed: { bmiCategory: p.bmiCategory },
-    },
-  });
 }
 
 // Student completes intake once. Saves intake fields, activates the account,
