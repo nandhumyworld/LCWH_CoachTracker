@@ -326,3 +326,21 @@ model SystemSetting {
   value     String
   updatedAt DateTime @updatedAt
 }
+
+// ---------------------------------------------------------------------------
+// Admin audit log
+// ---------------------------------------------------------------------------
+
+// Admin actions on users, for accountability. Stores field-level diffs;
+// never stores password values.
+model AdminAuditLog {
+  id           String   @id @default(cuid())
+  actorUserId  String
+  targetUserId String
+  action       String
+  details      Json?
+  createdAt    DateTime @default(now())
+
+  @@index([targetUserId])
+  @@index([createdAt])
+}
