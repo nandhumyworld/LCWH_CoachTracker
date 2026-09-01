@@ -1,33 +1,69 @@
-# App-only stack that talks to the CLOUD Postgres (the managed LCWH_test DB on
-# the Coolify VPS), not a local one. Use this to run the real container locally
-# for manual testing against real data.
+# ===========================================================================
+# LCWH — Coolify deployment manifest.
 #
-#   docker compose -f docker-compose.cloud.yml up --build
-#   → app on http://localhost:3000, DB = whatever DATABASE_URL points at in .env
+# Deploy on Coolify as a "Docker Compose" resource pointing at this repo.
+# Coolify builds the Dockerfile, fronts the app with its Traefik proxy
+# (TLS + routing), and injects the environment variables you set in its UI.
 #
-# All configuration (DATABASE_URL, AUTH_SECRET, CRON_SECRET, OPENROUTER_API_KEY,
-# …) is read from the .env file in this directory. The entrypoint runs
-# `prisma migrate deploy` on boot (a no-op when the DB is already up to date).
+# What you do in the Coolify UI:
+#   1. Set the Domain for the `app` service (Coolify terminates TLS and routes
+#      it to the container's exposed port 3000 — do NOT publish host ports).
+#   2. Set the environment variables below (the `${VAR:?...}` ones are required;
+#      the deploy fails fast if they are missing).
+#   3. Keep the `lcwh_uploads` volume as a persistent volume so uploaded images
+#      survive redeploys.
+#
+# Database: EXTERNAL. Point DATABASE_URL at the managed Postgres (the existing
+# LCWH_test DB on the VPS, or a Postgres you create in Coolify). This compose
+# does NOT run its own Postgres.
+#
+# Migrations: the image entrypoint runs `prisma migrate deploy` on every boot,
+# so pending migrations are applied automatically when the container starts.
+# ===========================================================================
 
 services:
   app:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: lcwh-app
     restart: unless-stopped
-    env_file:
-      - .env
+    # Coolify's proxy routes the assigned domain to this internal port.
+    # Intentionally NOT `ports:` — no host publishing on the shared VPS.
+    expose:
+      - "3000"
     environment:
-      # Ensure the container listens on all interfaces and the uploads dir
-      # matches the mounted volume (Dockerfile sets these too; kept explicit).
       NODE_ENV: "production"
       HOSTNAME: "0.0.0.0"
       PORT: "3000"
-      STORAGE_LOCAL_DIR: "/data/uploads"
-    ports:
-      - "3000:3000"
+
+      # --- Required (set in Coolify UI; deploy fails if unset) --------------
+      # Use the INTERNAL hostname of the Postgres service.
+      DATABASE_URL: ${DATABASE_URL:?set DATABASE_URL in Coolify}
+      # Generate with: openssl rand -base64 32
+      AUTH_SECRET: ${AUTH_SECRET:?set AUTH_SECRET in Coolify}
+      # Public HTTPS URL of the app, e.g. https://app.yourdomain.com
+      AUTH_URL: ${AUTH_URL:?set AUTH_URL to the public https domain}
+      # Bearer secret n8n/cron must send to /api/cron/* endpoints.
+      CRON_SECRET: ${CRON_SECRET:?set CRON_SECRET in Coolify}
+
+      # --- Optional (safe defaults; override in Coolify UI) -----------------
+      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-}
+      OPENROUTER_DEFAULT_MODEL: ${OPENROUTER_DEFAULT_MODEL:-openai/gpt-4o-mini}
+
+      STORAGE_DRIVER: ${STORAGE_DRIVER:-local}
+      STORAGE_LOCAL_DIR: ${STORAGE_LOCAL_DIR:-/data/uploads}
+      PHOTO_RETENTION_DAYS: ${PHOTO_RETENTION_DAYS:-90}
+
+      # Seed accounts for `prisma db seed` (only used if you seed the DB).
+      SEED_ADMIN_EMAIL: ${SEED_ADMIN_EMAIL:-admin@lcwh.co.in}
+      SEED_ADMIN_PASSWORD: ${SEED_ADMIN_PASSWORD:-admin123}
+      SEED_COACH_EMAIL: ${SEED_COACH_EMAIL:-flary@lcwh.co.in}
+      SEED_COACH_PASSWORD: ${SEED_COACH_PASSWORD:-coach123}
+
+      NEXT_PUBLIC_APP_NAME: ${NEXT_PUBLIC_APP_NAME:-Life Changing Wellness Hub}
+      NEXT_PUBLIC_APP_SHORT_NAME: ${NEXT_PUBLIC_APP_SHORT_NAME:-LCWH}
     volumes:
+      # Persistent uploads (local-disk StorageService writes to /data/uploads).
       - lcwh_uploads:/data
     healthcheck:
       test:
