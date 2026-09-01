@@ -4,6 +4,7 @@ import { requireStudent } from "@/lib/auth-guards";
 import { prisma } from "@/lib/db";
 import { localDateToUtc } from "@/lib/daily-entry-util";
 import { DailyForm, type FormQuestion } from "../../today/DailyForm";
+import { AnswerRecap } from "./AnswerRecap";
 
 // Read-only view of any past day and its report (FR-18).
 export default async function DayPage({
@@ -63,13 +64,19 @@ export default async function DayPage({
         </div>
       )}
 
-      <DailyForm
-        entryId={entry.id}
-        status={entry.status}
-        questions={formQuestions}
-        submissionMessage=""
-        reportStatus={report?.status ?? null}
-      />
+      {/* An open day is still editable via the form; a submitted/locked day
+          shows a read-only recap of what was answered (FR-18). */}
+      {entry.status === "open" ? (
+        <DailyForm
+          entryId={entry.id}
+          status={entry.status}
+          questions={formQuestions}
+          submissionMessage=""
+          reportStatus={report?.status ?? null}
+        />
+      ) : (
+        <AnswerRecap questions={formQuestions} />
+      )}
     </main>
   );
 }

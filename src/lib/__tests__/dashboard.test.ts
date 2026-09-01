@@ -48,6 +48,30 @@ describe("pickWeight", () => {
       pickWeight([{ question: { key: "body_weight", type: "number" }, value: 80 }], "body_weight"),
     ).toBe(80);
   });
+
+  it("finds the daily weight under the today_weight key by default", () => {
+    expect(
+      pickWeight([{ question: { key: "today_weight", type: "number" }, value: 74 }]),
+    ).toBe(74);
+  });
+
+  it("prefers today_weight over a legacy weight answer", () => {
+    expect(
+      pickWeight([
+        { question: { key: "weight", type: "number" }, value: 80 },
+        { question: { key: "today_weight", type: "number" }, value: 74 },
+      ]),
+    ).toBe(74);
+  });
+
+  it("accepts a list of candidate keys, first match wins", () => {
+    expect(
+      pickWeight([{ question: { key: "weight", type: "number" }, value: 80 }], [
+        "today_weight",
+        "weight",
+      ]),
+    ).toBe(80);
+  });
 });
 
 describe("formatDerived", () => {

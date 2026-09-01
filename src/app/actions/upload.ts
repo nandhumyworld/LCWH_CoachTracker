@@ -4,12 +4,16 @@ import { prisma } from "@/lib/db";
 import { requireStudent } from "@/lib/auth-guards";
 import { saveAnswer, EntryLockedError } from "@/lib/daily-entry";
 import { storeImageForStudent } from "@/lib/images";
+import { runExtractionForAnswer } from "@/lib/extraction";
 
 export interface UploadResult {
   ok: boolean;
   error?: string;
   imageId?: string;
   url?: string;
+  // For a meal (image-type) question, the calories/items extracted from the
+  // just-uploaded photo, so the form can show them immediately (null when none).
+  derived?: Record<string, unknown> | null;
 }
 
 // Uploads a photo and links it to the answer's imageRefId. For an image-type
@@ -60,5 +64,12 @@ export async function uploadPhotoAction(
     throw err;
   }
 
-  return { ok: true, imageId: stored.id, url: `/api/images/${stored.id}` };
+  // Analyze a meal photo right away (CR-007 on-upload): estimate calories/items
+  // and overwrite Answer.derived. Re-uploading a photo re-runs this and
+  // overwrites the previous result. Best-effort — never blocks the upload.
+  const derived = isImageAnswer
+    ? await runExtractionForAnswer(dailyEntryId, questionId)
+    : undefined;
+
+  return { ok: true, imageId: stored.id, url: `/api/images/${stored.id}`, derived };
 }

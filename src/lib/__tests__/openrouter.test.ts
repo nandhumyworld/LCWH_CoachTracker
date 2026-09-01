@@ -3,6 +3,7 @@ import {
   buildMessages,
   parseCompletion,
   bufferToDataUrl,
+  pickImageMime,
 } from "@/lib/openrouter";
 
 describe("buildMessages", () => {
@@ -64,5 +65,22 @@ describe("bufferToDataUrl", () => {
   it("builds a base64 data URL with the given mime type", () => {
     const url = bufferToDataUrl(Buffer.from("hello"), "image/png");
     expect(url).toBe(`data:image/png;base64,${Buffer.from("hello").toString("base64")}`);
+  });
+});
+
+describe("pickImageMime", () => {
+  it("prefers the recorded (DB) image mime over a generic blob mime", () => {
+    // Local-disk storage returns application/octet-stream; the DB mime is right.
+    expect(pickImageMime("image/jpeg", "application/octet-stream")).toBe("image/jpeg");
+  });
+
+  it("falls back to the blob mime when it is a real image type", () => {
+    expect(pickImageMime(null, "image/webp")).toBe("image/webp");
+  });
+
+  it("never returns a non-image mime — defaults to image/jpeg", () => {
+    expect(pickImageMime(null, "application/octet-stream")).toBe("image/jpeg");
+    expect(pickImageMime(null, null)).toBe("image/jpeg");
+    expect(pickImageMime("text/plain", "application/pdf")).toBe("image/jpeg");
   });
 });

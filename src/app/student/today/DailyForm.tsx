@@ -56,6 +56,12 @@ export function DailyForm({
   const [notes, setNotes] = useState<Notes>(() =>
     Object.fromEntries(questions.map((q) => [q.id, q.note])),
   );
+  // Live AI extraction per question (CR-007 on-upload). Seeded from the server
+  // (e.g. a previously analyzed photo) and refreshed the moment a photo uploads.
+  const [derivedMap, setDerivedMap] = useState<Record<string, Record<string, unknown> | null>>(
+    () => Object.fromEntries(questions.map((q) => [q.id, q.derived])),
+  );
+  const [analyzing, setAnalyzing] = useState<Record<string, boolean>>({});
   const [error, setError] = useState<string | null>(null);
   const [missing, setMissing] = useState<string[]>([]);
   const [done, setDone] = useState(readOnly);
@@ -90,17 +96,26 @@ export function DailyForm({
 
   async function upload(questionId: string, file: File) {
     setError(null);
+    // A meal (image-type) photo is analyzed on the server as it uploads; show a
+    // pending "Analyzing…" line until calories/items come back.
+    const isMeal = questions.find((q) => q.id === questionId)?.type === "image";
+    if (isMeal) setAnalyzing((m) => ({ ...m, [questionId]: true }));
+
     const fd = new FormData();
     fd.set("dailyEntryId", entryId);
     fd.set("questionId", questionId);
     fd.set("file", file);
     const res = await uploadPhotoAction(fd);
+
+    if (isMeal) setAnalyzing((m) => ({ ...m, [questionId]: false }));
     if (!res.ok) {
       setError(res.error ?? "Upload failed.");
       return;
     }
     // The server links imageRefId (and, for image-type questions, the value).
     setImages((m) => ({ ...m, [questionId]: res.imageId ?? null }));
+    // Overwrite the shown extraction with the fresh result for this photo.
+    if (isMeal) setDerivedMap((m) => ({ ...m, [questionId]: res.derived ?? null }));
   }
 
   function submit() {
@@ -189,8 +204,8 @@ export function DailyForm({
                   </div>
                 )}
 
-                {/* AI-extracted info from the photo (CR-009). */}
-                <DerivedLine derived={q.derived} />
+                {/* AI-extracted info from the photo (CR-009; live on upload). */}
+                <DerivedLine derived={derivedMap[q.id]} analyzing={analyzing[q.id]} />
 
                 {/* Note / comment on every question (CR-005). */}
                 <NoteField
@@ -229,7 +244,16 @@ export function DailyForm({
   );
 }
 
-function DerivedLine({ derived }: { derived: Record<string, unknown> | null }) {
+function DerivedLine({
+  derived,
+  analyzing,
+}: {
+  derived: Record<string, unknown> | null;
+  analyzing?: boolean;
+}) {
+  if (analyzing) {
+    return <p className="text-xs text-muted-foreground">Analyzing photo…</p>;
+  }
   const s = formatDerived(derived);
   return s ? <p className="text-xs text-primary">AI: {s}</p> : null;
 }

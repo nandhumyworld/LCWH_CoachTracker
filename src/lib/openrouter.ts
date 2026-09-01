@@ -47,6 +47,23 @@ export function bufferToDataUrl(buffer: Buffer, mimeType: string): string {
   return `data:${mimeType};base64,${buffer.toString("base64")}`;
 }
 
+// Chooses the mime type to send to the vision API. The DB-recorded mime
+// (StoredImage.mimeType, validated as an image at upload) is authoritative;
+// local-disk storage hands back a generic "application/octet-stream" blob mime,
+// which OpenRouter rejects ("Only image types are supported"). Prefer the
+// recorded mime, fall back to the blob mime only when it is itself an image
+// type, and otherwise default to image/jpeg so the call never fails on mime.
+export function pickImageMime(
+  recorded: string | null | undefined,
+  blob: string | null | undefined,
+): string {
+  const isImage = (m: string | null | undefined): m is string =>
+    typeof m === "string" && m.startsWith("image/");
+  if (isImage(recorded)) return recorded;
+  if (isImage(blob)) return blob;
+  return "image/jpeg";
+}
+
 interface CompletionResponse {
   choices?: Array<{ message?: { content?: string | null } }>;
   usage?: {

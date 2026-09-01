@@ -9,10 +9,10 @@ const prisma = new PrismaClient();
 // Seeds the platform Admin and the single Coach (Flary). Idempotent: safe to
 // re-run. Passwords come from env so no secrets are committed.
 async function main() {
-  const adminEmail = process.env.SEED_ADMIN_EMAIL ?? "admin@lcwh.local";
-  const adminPassword = process.env.SEED_ADMIN_PASSWORD ?? "changeme-admin";
-  const coachEmail = process.env.SEED_COACH_EMAIL ?? "flary@lcwh.local";
-  const coachPassword = process.env.SEED_COACH_PASSWORD ?? "changeme-coach";
+  const adminEmail = process.env.SEED_ADMIN_EMAIL ?? "admin@lcwh.co.in";
+  const adminPassword = process.env.SEED_ADMIN_PASSWORD ?? "admin123";
+  const coachEmail = process.env.SEED_COACH_EMAIL ?? "flary@lcwh.co.in";
+  const coachPassword = process.env.SEED_COACH_PASSWORD ?? "coach123";
 
   const admin = await prisma.user.upsert({
     where: { email: adminEmail },

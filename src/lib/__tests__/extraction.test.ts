@@ -1,5 +1,25 @@
 import { describe, it, expect } from "vitest";
-import { parseJsonObject, distributeDerived } from "@/lib/extraction-util";
+import { parseJsonObject, distributeDerived, isNoMeal, NO_MEAL } from "@/lib/extraction-util";
+
+describe("isNoMeal", () => {
+  it("is a no-meal when there's neither a photo nor a note", () => {
+    expect(isNoMeal({ hasImage: false, note: "" })).toBe(true);
+    expect(isNoMeal({ hasImage: false, note: "   " })).toBe(true);
+  });
+
+  it("is analyzable when a photo is present", () => {
+    expect(isNoMeal({ hasImage: true, note: "" })).toBe(false);
+  });
+
+  it("is analyzable when a note is present (photo optional)", () => {
+    expect(isNoMeal({ hasImage: false, note: "two rotis and dal" })).toBe(false);
+    expect(isNoMeal({ hasImage: true, note: "rice" })).toBe(false);
+  });
+
+  it("exposes the derived marker used for a skipped meal", () => {
+    expect(NO_MEAL).toMatchObject({ skipped: true, calories: 0 });
+  });
+});
 
 describe("parseJsonObject", () => {
   it("parses a plain JSON object", () => {

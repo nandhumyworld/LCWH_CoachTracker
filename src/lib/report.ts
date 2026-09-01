@@ -2,8 +2,9 @@ import { prisma } from "@/lib/db";
 import { getStorage } from "@/lib/storage";
 import { getDefaultModel } from "@/lib/settings";
 import { fillPrompt, type PromptAnswer, type PromptContext } from "@/lib/prompt";
-import { callOpenRouter, bufferToDataUrl } from "@/lib/openrouter";
+import { callOpenRouter, bufferToDataUrl, pickImageMime } from "@/lib/openrouter";
 import { runExtraction } from "@/lib/extraction";
+import { summarizeIntake } from "@/lib/intake-util";
 
 // AI daily-report generation (spec §6, FR-26..30). Loads a submitted entry's
 // answers + profile + images, fills the admin prompt template, calls OpenRouter
@@ -74,6 +75,26 @@ export async function generateReport(dailyEntryId: string): Promise<void> {
       }
     }
 
+    // Deterministic intake math (small models add unreliably, so compute it):
+    // meal calories from AI extraction + a fixed 200 kcal / 20 g per shake taken
+    // (any question whose key contains "shake", answered "Yes"). Exposed as
+    // profile.* placeholders the prompt just states verbatim.
+    const mealCalories = entry.answers
+      .filter((a) => a.question.type === "image")
+      .map((a) => {
+        const c = derived[a.question.key]?.calories;
+        return typeof c === "number" ? c : 0;
+      });
+    const shakeAnswers = entry.answers
+      .filter((a) => a.question.key.toLowerCase().includes("shake"))
+      .map((a) => a.value);
+    const intake = summarizeIntake({ mealCalories, shakeAnswers });
+    profile.totalCalories = intake.totalCalories;
+    profile.mealCalories = intake.mealCalories;
+    profile.shakeCalories = intake.shakeCalories;
+    profile.shakeProteinG = intake.shakeProteinG;
+    profile.shakesTaken = intake.shakesTaken;
+
     const filled = fillPrompt(body, { profile, answers, derived });
 
     const imageUrls: string[] = [];
@@ -82,7 +103,7 @@ export async function generateReport(dailyEntryId: string): Promise<void> {
       if (!meta) continue; // expired/deleted or unknown — skip, don't fail
       const blob = await getStorage().get(meta.storageKey);
       if (!blob) continue;
-      imageUrls.push(bufferToDataUrl(blob.body, blob.mimeType ?? meta.mimeType));
+      imageUrls.push(bufferToDataUrl(blob.body, pickImageMime(meta.mimeType, blob.mimeType)));
     }
 
     const result = await callOpenRouter({

@@ -1,5 +1,27 @@
 // Pure helpers for image extraction (CR-007) — no Prisma/IO, unit-tested.
 
+// Derived value stored for a meal that had no photo and no note. Kept here (not
+// in the IO module) so both the batch and the on-upload single-meal paths share
+// one marker and it can be asserted in unit tests.
+export const NO_MEAL = {
+  skipped: true,
+  status: "no meal logged",
+  calories: 0,
+} as const;
+
+// A meal answer with neither a photo nor a (non-blank) note is "no meal" and is
+// never sent to the model. The note is treated as present only when it has
+// non-whitespace content.
+export function isNoMeal({
+  hasImage,
+  note,
+}: {
+  hasImage: boolean;
+  note: string;
+}): boolean {
+  return !hasImage && !note.trim();
+}
+
 // Extracts a JSON object from a model response. Handles ```json fences and
 // surrounding prose by taking the substring from the first `{` to the last `}`.
 // Returns null when nothing parseable is found.

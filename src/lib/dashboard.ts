@@ -40,12 +40,21 @@ interface AnswerLike {
   value: unknown;
 }
 
-// The numeric value the student logged for the weight question (default key
-// "weight"), or null when absent/non-numeric. Used for the roster's latest
-// weight column.
-export function pickWeight(answers: AnswerLike[], key = "weight"): number | null {
-  const a = answers.find((x) => x.question.key === key);
-  return typeof a?.value === "number" ? a.value : null;
+// The numeric value the student logged for the daily weight question, or null
+// when absent/non-numeric. Used for the dashboard's latest-weight + progress and
+// the coach roster. `keys` is one key or an ordered list of candidates; the
+// first candidate with a numeric answer wins. Defaults to the current question
+// key ("today_weight") and falls back to the legacy "weight" key.
+export function pickWeight(
+  answers: AnswerLike[],
+  keys: string | string[] = ["today_weight", "weight"],
+): number | null {
+  const candidates = Array.isArray(keys) ? keys : [keys];
+  for (const key of candidates) {
+    const a = answers.find((x) => x.question.key === key);
+    if (typeof a?.value === "number") return a.value;
+  }
+  return null;
 }
 
 // Human summary of an answer's AI-extracted values (Answer.derived, CR-007/009),
