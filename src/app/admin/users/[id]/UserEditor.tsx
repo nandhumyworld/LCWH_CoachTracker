@@ -64,6 +64,8 @@ export function UserEditor({ data }: { data: EditorData }) {
   const [currentWeightKg, setCurrentWeightKg] = useState(s?.currentWeightKg?.toString() ?? "");
   const [targetWeightKg, setTargetWeightKg] = useState(s?.targetWeightKg?.toString() ?? "");
 
+  const num = (v: string) => (v.trim() === "" ? undefined : Number(v));
+
   function run(fn: () => Promise<{ ok: boolean; error?: string; url?: string }>, okMsg: string) {
     setMsg(null);
     setErr(null);
@@ -76,6 +78,7 @@ export function UserEditor({ data }: { data: EditorData }) {
       }
       if (res.url) setResetLink(res.url);
       setMsg(okMsg);
+      setPassword("");
       router.refresh();
     });
   }
@@ -217,9 +220,9 @@ export function UserEditor({ data }: { data: EditorData }) {
                       timezone,
                       status,
                       coachId,
-                      heightCm: Number(heightCm),
-                      currentWeightKg: Number(currentWeightKg),
-                      targetWeightKg: Number(targetWeightKg),
+                      heightCm: num(heightCm),
+                      currentWeightKg: num(currentWeightKg),
+                      targetWeightKg: num(targetWeightKg),
                     }),
                   "Profile updated.",
                 )

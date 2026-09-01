@@ -55,6 +55,13 @@ describe("studentProfileSchema", () => {
   it("rejects target above current", () => {
     expect(studentProfileSchema.safeParse({ ...base, targetWeightKg: 90 }).success).toBe(false);
   });
+  it("accepts input with weights omitted (invited student)", () => {
+    const { heightCm, currentWeightKg, targetWeightKg, ...rest } = base;
+    void heightCm;
+    void currentWeightKg;
+    void targetWeightKg;
+    expect(studentProfileSchema.safeParse(rest).success).toBe(true);
+  });
 });
 
 describe("isValidTimezone", () => {

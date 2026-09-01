@@ -23,14 +23,20 @@ export const studentProfileSchema = z
     timezone: z.string().min(1, "Timezone is required."),
     status: z.enum(STUDENT_STATUS_OPTIONS),
     coachId: z.string().min(1, "Coach is required."),
-    heightCm: z.number().positive(),
-    currentWeightKg: z.number().positive(),
-    targetWeightKg: z.number().positive(),
+    heightCm: z.number().positive().optional(),
+    currentWeightKg: z.number().positive().optional(),
+    targetWeightKg: z.number().positive().optional(),
   })
-  .refine((d) => d.targetWeightKg <= d.currentWeightKg, {
-    message: "Target weight should not exceed current weight.",
-    path: ["targetWeightKg"],
-  });
+  .refine(
+    (d) =>
+      d.targetWeightKg == null ||
+      d.currentWeightKg == null ||
+      d.targetWeightKg <= d.currentWeightKg,
+    {
+      message: "Target weight should not exceed current weight.",
+      path: ["targetWeightKg"],
+    },
+  );
 
 export function normalizeEmail(email: string): string {
   return email.trim().toLowerCase();

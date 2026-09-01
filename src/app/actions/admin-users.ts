@@ -106,6 +106,7 @@ export async function updateUserIdentity(input: {
     buildAuditDetails({ name: user.name, email: user.email }, { name, email }, ["name", "email"]),
   );
   revalidatePath(`/admin/users/${user.id}`);
+  revalidatePath("/admin/users");
   return { ok: true };
 }
 
@@ -148,9 +149,9 @@ export async function updateStudentProfile(input: {
   timezone: string;
   status: "invited" | "active" | "paused";
   coachId: string;
-  heightCm: number;
-  currentWeightKg: number;
-  targetWeightKg: number;
+  heightCm?: number;
+  currentWeightKg?: number;
+  targetWeightKg?: number;
 }): Promise<AdminActionResult> {
   const admin = await requireRole("admin");
   const parsed = studentProfileSchema.safeParse({
@@ -196,11 +197,17 @@ export async function updateStudentProfile(input: {
     },
   });
 
-  await writeProfilePanel(student.id, {
-    heightCm: parsed.data.heightCm,
-    currentWeightKg: parsed.data.currentWeightKg,
-    targetWeightKg: parsed.data.targetWeightKg,
-  });
+  if (
+    parsed.data.heightCm != null &&
+    parsed.data.currentWeightKg != null &&
+    parsed.data.targetWeightKg != null
+  ) {
+    await writeProfilePanel(student.id, {
+      heightCm: parsed.data.heightCm,
+      currentWeightKg: parsed.data.currentWeightKg,
+      targetWeightKg: parsed.data.targetWeightKg,
+    });
+  }
 
   await writeAudit(
     admin.id,
