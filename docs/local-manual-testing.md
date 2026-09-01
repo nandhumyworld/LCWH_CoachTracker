@@ -188,3 +188,26 @@ Uploaded photos live in the Docker named volume `lcwh_uploads` (mounted at
 
 Remember: this ran against the **shared cloud DB**, so test data persists there
 until removed.
+
+## Admin user management
+
+Sign in as an admin (see seed credentials).
+
+1. **List + search:** Visit `/admin/users`. All users appear. Typing in
+   the search box filters by name/email.
+2. **Create a coach:** `/admin/users/new` → name + email, role "coach",
+   Create. A copyable set-password link appears; the coach shows in the
+   list. Open the link in a private window and set a password; the coach
+   can log in.
+3. **Create an admin:** same flow with role "admin".
+4. **Edit identity:** Edit a user → change name/email → Save account.
+   Re-using another user's email is rejected.
+5. **Set password:** Edit a user → type a password (≥ 8) → Set password →
+   the user can log in with it. A shorter password is rejected.
+6. **Reset link:** Edit a user → Generate reset link → copy → set a new
+   password via the link.
+7. **Student profile:** Edit a student → change weights/timezone/status,
+   reassign coach → Save profile. Target > current is rejected. The
+   student's profile panel (BMI/BMR) reflects the new numbers.
+8. **Audit log:** `/admin/audit` lists every change above, newest first,
+   with actor + target; a password change shows no password value.
