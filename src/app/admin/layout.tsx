@@ -4,9 +4,11 @@ import { SignOutButton } from "@/components/SignOutButton";
 
 const NAV = [
   { href: "/admin", label: "Overview" },
+  { href: "/admin/users", label: "Users" },
   { href: "/admin/prompt", label: "Report prompt" },
   { href: "/admin/settings", label: "Settings" },
   { href: "/admin/logs", label: "Generation logs" },
+  { href: "/admin/audit", label: "Audit log" },
 ];
 
 export default async function AdminLayout({
