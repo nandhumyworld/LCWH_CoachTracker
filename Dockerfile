@@ -62,5 +62,10 @@ ENV PORT=3000
 ENV HOSTNAME=0.0.0.0
 ENV STORAGE_LOCAL_DIR=/data/uploads
 
+# Liveness + DB readiness probe. Travels with the image so both `docker` and
+# Coolify's Dockerfile build pack get a health signal without extra config.
+HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
+  CMD node -e "fetch('http://localhost:3000/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
+
 ENTRYPOINT ["./docker-entrypoint.sh"]
 CMD ["node", "server.js"]

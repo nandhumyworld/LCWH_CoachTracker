@@ -1,7 +1,18 @@
 # LCWH — Cloud Deployment (Coolify)
 
-How to deploy LCWH to a Coolify-managed VPS (e.g. Hostinger) using
-[`docker-compose.cloud.yml`](../docker-compose.cloud.yml).
+How to deploy LCWH to a Coolify-managed VPS (e.g. Hostinger).
+
+Two build packs work — pick one in step 2:
+
+- **Dockerfile (recommended)** — Coolify builds the repo [`Dockerfile`](../Dockerfile)
+  directly. Simplest for a single app + external DB; Coolify manages env, the
+  persistent volume, the proxy, restarts, and health checks from its UI.
+- **Docker Compose** — Coolify uses [`docker-compose.cloud.yml`](../docker-compose.cloud.yml).
+  Choose this if you want the volume/health check/required-env declared in the
+  repo, or plan to co-deploy sidecars later.
+
+Everything else in this guide (env vars, DB, migrations, verification, cron) is
+the same for both.
 
 ## Architecture
 
@@ -39,7 +50,10 @@ Internet ──HTTPS──▶ Coolify (Traefik proxy, TLS)
 ## Environment variables
 
 Set these in the Coolify service's **Environment Variables** UI. Required vars
-have no default — the deploy fails fast if they are missing.
+have no default. With the **Docker Compose** build pack the deploy fails fast
+if a required var is missing (the `${VAR:?}` markers); with the **Dockerfile**
+build pack there's no such guard, so double-check the required four are set or
+the app will error at runtime (e.g. broken sign-in on a missing `AUTH_URL`).
 
 | Variable | Required | Example / default | Notes |
 |---|---|---|---|
@@ -73,9 +87,18 @@ password) — that becomes `DATABASE_URL`.
 
 ### 2. Create the app resource
 
-1. Coolify → **+ New** → **Docker Compose**.
-2. Select this Git repository and branch.
-3. Set the **Compose file path** to `docker-compose.cloud.yml`.
+**Option A — Dockerfile build pack (recommended):**
+
+1. Coolify → **+ New** → **Application** → your Git repository + branch.
+2. Set **Build Pack** to **Dockerfile** (Coolify uses the repo `Dockerfile`).
+3. Set the **Ports Exposes** field to `3000`.
+4. Persistent volume + health check are configured in the UI — see steps 5–6.
+
+**Option B — Docker Compose build pack:**
+
+1. Coolify → **+ New** → **Docker Compose** → your Git repository + branch.
+2. Set the **Compose file path** to `docker-compose.cloud.yml`. The volume,
+   health check, and `${VAR:?}` required-env enforcement come from that file.
 
 ### 3. Configure domain
 
@@ -91,9 +114,12 @@ domain from step 3.
 
 ### 5. Configure persistent storage
 
-Ensure the `lcwh_uploads` volume is marked **persistent** so uploaded images
-survive redeploys. (Coolify shows named volumes under the resource's Storage
-tab.)
+Uploaded images live under `/data` and must survive redeploys:
+
+- **Dockerfile build pack:** Coolify → resource → **Storage** → add a
+  **Persistent Storage** mount at `/data`.
+- **Docker Compose build pack:** ensure the `lcwh_uploads` volume is marked
+  **persistent** (Coolify lists named volumes under the Storage tab).
 
 ### 6. Deploy
 
@@ -173,7 +199,7 @@ curl -X POST https://app.yourdomain.com/api/cron/auto-submit \
 
 ## Related
 
-- [`docker-compose.cloud.yml`](../docker-compose.cloud.yml) — the deploy manifest.
-- [`Dockerfile`](../Dockerfile) — multi-stage build + runtime image.
+- [`Dockerfile`](../Dockerfile) — multi-stage build + runtime image (Dockerfile build pack).
+- [`docker-compose.cloud.yml`](../docker-compose.cloud.yml) — deploy manifest for the Compose build pack.
 - [`docker-entrypoint.sh`](../docker-entrypoint.sh) — runs `prisma migrate deploy` on boot.
 - [`docker-compose.yml`](../docker-compose.yml) — local dev stack (app + Postgres).
