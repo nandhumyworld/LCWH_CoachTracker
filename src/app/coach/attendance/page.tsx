@@ -1,6 +1,7 @@
 import { requireCoach } from "@/lib/auth-guards";
 import { prisma } from "@/lib/db";
 import { localDateFor } from "@/lib/day";
+import { getNow } from "@/lib/clock";
 import { localDateToUtc } from "@/lib/daily-entry-util";
 import { formatInTimeZone } from "date-fns-tz";
 import { AttendanceDatePicker } from "./AttendanceDatePicker";
@@ -17,7 +18,7 @@ export default async function AttendancePage({
   const date =
     dateParam && /^\d{4}-\d{2}-\d{2}$/.test(dateParam)
       ? dateParam
-      : localDateFor("UTC");
+      : localDateFor("UTC", await getNow());
 
   const [gate, students] = await Promise.all([
     prisma.dailyGateMessage.findUnique({

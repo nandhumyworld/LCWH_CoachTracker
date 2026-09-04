@@ -1,6 +1,7 @@
 import { requireCoach } from "@/lib/auth-guards";
 import { prisma } from "@/lib/db";
 import { localDateFor } from "@/lib/day";
+import { getNow } from "@/lib/clock";
 import { localDateToUtc } from "@/lib/daily-entry-util";
 import { GateComposer } from "./GateComposer";
 
@@ -8,7 +9,7 @@ import { GateComposer } from "./GateComposer";
 // to a week ahead) and sees what is already scheduled from today onward.
 export default async function CoachGatePage() {
   const { coachId } = await requireCoach();
-  const today = localDateFor("UTC");
+  const today = localDateFor("UTC", await getNow());
 
   const upcoming = await prisma.dailyGateMessage.findMany({
     where: { coachId, scheduledDate: { gte: localDateToUtc(today) } },

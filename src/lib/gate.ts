@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/db";
 import { localDateFor } from "@/lib/day";
+import { getNow } from "@/lib/clock";
 import { localDateToUtc } from "@/lib/daily-entry-util";
 import { isSchedulableDate } from "@/lib/gate-util";
 import type { DailyGateMessage } from "@prisma/client";
@@ -25,11 +26,12 @@ export type ScheduleGateResult =
 // bound is computed in UTC (a convenience bound, not the hard student day-lock).
 export async function scheduleGateMessage(
   input: ScheduleGateInput,
-  now: Date = new Date(),
+  now?: Date,
 ): Promise<ScheduleGateResult> {
+  const at = now ?? (await getNow());
   const body = input.bodyText.trim();
   if (!body) return { ok: false, error: "Message text is required." };
-  if (!isSchedulableDate(input.scheduledDate, localDateFor("UTC", now)))
+  if (!isSchedulableDate(input.scheduledDate, localDateFor("UTC", at)))
     return { ok: false, error: "Pick a date from today up to a week ahead." };
 
   const date = localDateToUtc(input.scheduledDate);
@@ -70,7 +72,7 @@ export interface GateForToday {
 // No message scheduled for the student's local date ⇒ { message: null } (FR-24).
 export async function gateForStudentToday(
   studentId: string,
-  now: Date = new Date(),
+  now?: Date,
 ): Promise<GateForToday> {
   const student = await prisma.student.findUnique({
     where: { id: studentId },
@@ -78,7 +80,8 @@ export async function gateForStudentToday(
   });
   if (!student) return { message: null, acknowledged: false };
 
-  const localDate = localDateToUtc(localDateFor(student.timezone, now));
+  const at = now ?? (await getNow());
+  const localDate = localDateToUtc(localDateFor(student.timezone, at));
   const message = await prisma.dailyGateMessage.findUnique({
     where: {
       coachId_scheduledDate: { coachId: student.coachId, scheduledDate: localDate },
@@ -98,11 +101,11 @@ export async function gateForStudentToday(
 export async function acknowledgeGate(
   gateMessageId: string,
   studentId: string,
-  now: Date = new Date(),
+  now?: Date,
 ): Promise<void> {
   await prisma.gateAcknowledgement.upsert({
     where: { gateMessageId_studentId: { gateMessageId, studentId } },
     update: {},
-    create: { gateMessageId, studentId, acknowledgedAt: now },
+    create: { gateMessageId, studentId, acknowledgedAt: now ?? (await getNow()) },
   });
 }

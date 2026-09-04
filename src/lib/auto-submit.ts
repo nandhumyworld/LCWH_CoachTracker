@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/db";
 import { isPastLocalCutoff } from "@/lib/day";
+import { getNow } from "@/lib/clock";
 import {
   finalStatusForAutoSubmit,
   dbDateToLocalDateString,
@@ -20,8 +21,9 @@ export interface AutoSubmitSummary {
 // Creating entries for all active students on their prior local date is a
 // possible enhancement for stricter attendance/reporting.
 export async function runAutoSubmit(
-  now: Date = new Date(),
+  now?: Date,
 ): Promise<AutoSubmitSummary> {
+  const at = now ?? (await getNow());
   const openEntries = await prisma.dailyEntry.findMany({
     where: { status: "open" },
     include: {
@@ -33,13 +35,13 @@ export async function runAutoSubmit(
   let processed = 0;
   for (const entry of openEntries) {
     const localDate = dbDateToLocalDateString(entry.localDate);
-    if (!isPastLocalCutoff(entry.student.timezone, localDate, now)) continue;
+    if (!isPastLocalCutoff(entry.student.timezone, localDate, at)) continue;
 
     const status = finalStatusForAutoSubmit(entry._count.answers);
     await prisma.$transaction([
       prisma.dailyEntry.update({
         where: { id: entry.id },
-        data: { status, submittedAt: now },
+        data: { status, submittedAt: at },
       }),
       prisma.report.upsert({
         where: { dailyEntryId: entry.id },

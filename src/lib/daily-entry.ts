@@ -1,6 +1,7 @@
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { localDateFor } from "@/lib/day";
+import { getNow } from "@/lib/clock";
 import { canEditEntry, localDateToUtc } from "@/lib/daily-entry-util";
 
 // Ensures a DailyEntry exists for the given student's local date (creating it
@@ -28,7 +29,10 @@ export async function getOrCreateTodayEntry(studentId: string) {
     where: { id: studentId },
     select: { timezone: true },
   });
-  return getOrCreateEntryForDate(studentId, localDateFor(student.timezone));
+  return getOrCreateEntryForDate(
+    studentId,
+    localDateFor(student.timezone, await getNow()),
+  );
 }
 
 export class EntryLockedError extends Error {

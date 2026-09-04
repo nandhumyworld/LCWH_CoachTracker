@@ -2,6 +2,7 @@ import Link from "next/link";
 import { requireCoach } from "@/lib/auth-guards";
 import { prisma } from "@/lib/db";
 import { localDateFor } from "@/lib/day";
+import { getNow } from "@/lib/clock";
 import { localDateToUtc } from "@/lib/daily-entry-util";
 import { todayStatusLabel, reportStatusLabel, pickWeight } from "@/lib/dashboard";
 
@@ -9,7 +10,7 @@ import { todayStatusLabel, reportStatusLabel, pickWeight } from "@/lib/dashboard
 // latest logged weight (spec §9, FR-31). "Today" is each student's local date.
 export default async function CoachHome() {
   const { user, coachId } = await requireCoach();
-  const now = new Date();
+  const now = await getNow();
 
   const students = await prisma.student.findMany({
     where: { coachId },

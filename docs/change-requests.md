@@ -28,6 +28,8 @@ _Kept in sync as entries are added/closed. Newest first._
 
 | ID | Date | Sev | Type | Area | Summary | Status |
 |----|------|-----|------|------|---------|--------|
+| CR-017 | 2026-09-04 | Medium | New | Admin / testing | Admin testing clock: move the whole app to a simulated "now" (offset stored in SystemSetting) to test the daily gate, auto-submit cutoff, and day rollover without waiting for real days; +1/−1 day, jump-to-23:58, "Run auto-submit now", and reset-to-real-time on /admin/settings | Done (pending commit) |
+| CR-016 | 2026-09-04 | Medium | New | Coach / testing | Coach (and admin) can reset a student's day — clears that day's answers, report, and uploaded photos and reopens it so the student can submit again; useful for re-testing scenarios on the same user without waiting a day | Done (pending commit) |
 | CR-015 | 2026-08-18 | Medium | New | Daily message | Coach can edit (and delete) an already-scheduled gate message | Done (1a8c968) |
 | CR-014 | 2026-08-18 | Medium | New | Daily message | Show the daily gate message (image + text) on every login, not only the first time | Done (661a125) |
 | CR-013 | 2026-08-18 | Medium | New | Daily message | Coach can attach a picture to the scheduled daily message; students see the image + text | Done (661a125) |

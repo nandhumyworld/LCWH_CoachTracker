@@ -3,6 +3,7 @@ import Link from "next/link";
 import { requireStudent } from "@/lib/auth-guards";
 import { prisma } from "@/lib/db";
 import { localDateFor } from "@/lib/day";
+import { getNow } from "@/lib/clock";
 import { computeWeightProgress, sumAnsweredPoints } from "@/lib/progress";
 import { pickWeight, todayStatusLabel, reportStatusLabel } from "@/lib/dashboard";
 import { ProfilePanelCard } from "@/components/ProfilePanelCard";
@@ -73,7 +74,9 @@ export default async function StudentHome() {
         })
       : null;
 
-  const today = student ? localDateFor(student.timezone) : "";
+  const today = student
+    ? localDateFor(student.timezone, await getNow())
+    : "";
   const recentDays = entries.slice(0, 14).map((e) => ({
     date: localDateFor("UTC", e.localDate),
     status: todayStatusLabel(e.status),
