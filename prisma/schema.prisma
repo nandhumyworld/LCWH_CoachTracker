@@ -50,6 +50,11 @@ enum ReportStatus {
   failed
 }
 
+enum PromptTemplateKind {
+  report
+  extraction
+}
+
 // ---------------------------------------------------------------------------
 // Identity & roles
 // ---------------------------------------------------------------------------
@@ -81,6 +86,7 @@ model Coach {
   questions       Question[]
   programSettings ProgramSettings?
   gateMessages    DailyGateMessage[]
+  storedImages    StoredImage[]
 }
 
 model Student {
@@ -168,8 +174,11 @@ model ProgramSettings {
   coach             Coach    @relation(fields: [coachId], references: [id], onDelete: Cascade)
   formDescription   String?
   submissionMessage String?
-  promptTemplateId  String?
-  promptTemplate    PromptTemplate? @relation(fields: [promptTemplateId], references: [id])
+  // Report prompt (existing) + optional image-extraction prompt (CR-007).
+  promptTemplateId     String?
+  promptTemplate       PromptTemplate? @relation("ReportTemplate", fields: [promptTemplateId], references: [id])
+  extractionTemplateId String?
+  extractionTemplate   PromptTemplate? @relation("ExtractionTemplate", fields: [extractionTemplateId], references: [id])
 }
 
 // ---------------------------------------------------------------------------
@@ -177,17 +186,19 @@ model ProgramSettings {
 // ---------------------------------------------------------------------------
 
 model PromptTemplate {
-  id        String   @id @default(cuid())
+  id        String             @id @default(cuid())
   name      String
   body      String // with {{placeholders}}
   modelId   String // OpenRouter model id
-  version   Int      @default(1)
+  kind      PromptTemplateKind @default(report)
+  version   Int                @default(1)
   updatedBy String?
-  updatedAt DateTime @updatedAt
-  createdAt DateTime @default(now())
+  updatedAt DateTime           @updatedAt
+  createdAt DateTime           @default(now())
 
-  programSettings ProgramSettings[]
-  reports         Report[]
+  reportSettings     ProgramSettings[] @relation("ReportTemplate")
+  extractionSettings ProgramSettings[] @relation("ExtractionTemplate")
+  reports            Report[]
 }
 
 // ---------------------------------------------------------------------------
@@ -221,6 +232,7 @@ model Answer {
   imageRefId   String?
   imageRef     StoredImage? @relation("AnswerImage", fields: [imageRefId], references: [id])
   note         String?
+  derived      Json? // AI-extracted values from an attached image (CR-007), e.g. { calories, items }
 
   @@unique([dailyEntryId, questionId])
 }
@@ -232,8 +244,12 @@ model Answer {
 model StoredImage {
   id             String   @id @default(cuid())
   storageKey     String   @unique // opaque key resolved by StorageService
-  ownerStudentId String
-  ownerStudent   Student  @relation(fields: [ownerStudentId], references: [id], onDelete: Cascade)
+  // Owned by a student (daily photo) OR a coach (gate-message picture). Exactly
+  // one is set; coach-owned images are viewable by that coach's students.
+  ownerStudentId String?
+  ownerStudent   Student? @relation(fields: [ownerStudentId], references: [id], onDelete: Cascade)
+  ownerCoachId   String?
+  ownerCoach     Coach?   @relation(fields: [ownerCoachId], references: [id], onDelete: Cascade)
   dailyEntryId   String?
   dailyEntry     DailyEntry? @relation(fields: [dailyEntryId], references: [id], onDelete: SetNull)
   mimeType       String
@@ -245,6 +261,7 @@ model StoredImage {
   answers Answer[] @relation("AnswerImage")
 
   @@index([ownerStudentId])
+  @@index([ownerCoachId])
   @@index([expiresAt])
 }
 
@@ -308,4 +325,22 @@ model SystemSetting {
   key       String   @id
   value     String
   updatedAt DateTime @updatedAt
+}
+
+// ---------------------------------------------------------------------------
+// Admin audit log
+// ---------------------------------------------------------------------------
+
+// Admin actions on users, for accountability. Stores field-level diffs;
+// never stores password values.
+model AdminAuditLog {
+  id           String   @id @default(cuid())
+  actorUserId  String
+  targetUserId String
+  action       String
+  details      Json?
+  createdAt    DateTime @default(now())
+
+  @@index([targetUserId])
+  @@index([createdAt])
 }
