@@ -110,6 +110,33 @@ describe("generateReport", () => {
     });
   });
 
+  it("uses the typed value for a non-image question that has a proof photo", async () => {
+    const entry = entryFixture();
+    // Weight question keeps type "number" but now carries a proof photo.
+    entry.answers[0] = {
+      question: { key: "weight", type: "number" },
+      value: 78,
+      imageRefId: "weight_img_1",
+      imageRef: {
+        id: "weight_img_1",
+        storageKey: "students/s1/weight.jpg",
+        mimeType: "image/jpeg",
+        deletedAt: null,
+      },
+    };
+    findUnique.mockResolvedValue(entry);
+    storageGet.mockResolvedValue({ body: Buffer.from("jpegbytes"), mimeType: "image/jpeg" });
+    callOpenRouter.mockResolvedValue({ text: "ok", tokensIn: null, tokensOut: null, costEstimate: null });
+
+    await generateReport("entry_1");
+
+    const callArg = callOpenRouter.mock.calls[0][0];
+    // The number is inlined; the weight photo is NOT sent to the model (proof only).
+    expect(callArg.prompt).toBe("Weight 78 vs 70. See [image: lunch_photo]");
+    expect(callArg.images).toHaveLength(1);
+    expect(storageGet).not.toHaveBeenCalledWith("students/s1/weight.jpg");
+  });
+
   it("marks the report failed and records the error when generation throws", async () => {
     findUnique.mockResolvedValue(entryFixture());
     storageGet.mockResolvedValue({ body: Buffer.from("x"), mimeType: "image/jpeg" });

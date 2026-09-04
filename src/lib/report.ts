@@ -58,8 +58,12 @@ export async function generateReport(dailyEntryId: string): Promise<void> {
     const imageMeta = new Map<string, { storageKey: string; mimeType: string }>();
     for (const a of entry.answers) {
       const key = a.question.key;
-      // Any answer with an attached image can be referenced as a photo.
-      if (a.imageRefId) {
+      // Only a true photo question (type "image", e.g. lunch_photo) becomes a
+      // vision input. Other question types keep their typed/selected value even
+      // when a proof photo is attached — e.g. the weight photo is coach proof,
+      // but {{q.today_weight}} must still resolve to the typed number, not the
+      // image marker.
+      if (a.question.type === "image" && a.imageRefId) {
         answers[key] = { imageId: a.imageRefId };
         if (a.imageRef && !a.imageRef.deletedAt) {
           imageMeta.set(a.imageRefId, {
