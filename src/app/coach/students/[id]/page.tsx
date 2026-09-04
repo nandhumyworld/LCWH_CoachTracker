@@ -7,6 +7,7 @@ import { todayStatusLabel, reportStatusLabel, formatDerived } from "@/lib/dashbo
 import { ProfilePanelCard } from "@/components/ProfilePanelCard";
 import { RegenerateControls } from "@/components/RegenerateControls";
 import { RegenerateButton } from "./RegenerateButton";
+import { ResetEntryButton } from "./ResetEntryButton";
 
 // Formats a stored answer value for read-only display.
 function formatValue(value: unknown, imageRefId: string | null): string | null {
@@ -96,7 +97,10 @@ export default async function CoachStudentPage({
                         <p className="whitespace-pre-wrap text-sm">{entry.report.body}</p>
                       </div>
                     )}
-                    <RegenerateControls dailyEntryId={entry.id} />
+                    <div className="flex flex-wrap items-center gap-2">
+                      <RegenerateControls dailyEntryId={entry.id} />
+                      <ResetEntryButton dailyEntryId={entry.id} />
+                    </div>
                     <dl className="space-y-2 text-sm">
                       {entry.answers.length === 0 ? (
                         <p className="text-muted-foreground">No answers recorded.</p>

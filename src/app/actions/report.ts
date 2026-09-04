@@ -8,6 +8,7 @@ import {
   runReportPipeline,
 } from "@/lib/report";
 import { runExtraction } from "@/lib/extraction";
+import { resetDailyEntry } from "@/lib/daily-entry-reset";
 
 export interface RetryResult {
   ok: boolean;
@@ -80,5 +81,39 @@ export async function regenerateReportAction(input: {
   revalidatePath("/admin/logs");
   revalidatePath(`/coach/students`);
   revalidatePath("/student");
+  return { ok: true };
+}
+
+// Reset a student's day so they can fill it again (coach tool + manual-testing
+// aid, CR-016). Clears that day's answers, report, and uploaded images and
+// reopens the entry. Same authorization as regenerate: a coach may reset only
+// their own students' days; an admin may reset any.
+export async function resetEntryAction(input: {
+  dailyEntryId: string;
+}): Promise<RetryResult> {
+  const user = await getSessionUser();
+  if (!user || (user.role !== "admin" && user.role !== "coach"))
+    return { ok: false, error: "Not allowed." };
+
+  const entry = await prisma.dailyEntry.findUnique({
+    where: { id: input.dailyEntryId },
+    select: { id: true, student: { select: { coachId: true } } },
+  });
+  if (!entry) return { ok: false, error: "Entry not found." };
+
+  if (user.role === "coach") {
+    const coach = await prisma.coach.findUnique({
+      where: { userId: user.id },
+      select: { id: true },
+    });
+    if (!coach || coach.id !== entry.student.coachId)
+      return { ok: false, error: "Not allowed." };
+  }
+
+  await resetDailyEntry(entry.id);
+
+  revalidatePath(`/coach/students`);
+  revalidatePath("/student");
+  revalidatePath("/student/today");
   return { ok: true };
 }
